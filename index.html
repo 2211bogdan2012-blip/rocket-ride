@@ -1488,41 +1488,85 @@ class GameRenderer {
       ctx.translate(o.x, o.y);
       
       if (o.type === 'debris') {
-        // Meteor with crater, glow trail, rotation
-        const rot = t * 2 + (o.size * 0.7);
+        // Fiery asteroid with lava cracks and flame tail
+        const rot = t * 1.8 + (o.size * 0.5);
+        
+        // Flame tail (drawn before rotation so it trails "behind")
+        ctx.save();
+        const tailAngle = rot * 0.3;
+        const tailLen = o.size * 2.5;
+        for (let f = 0; f < 5; f++) {
+          const flicker = Math.sin(t * 12 + f * 2) * o.size * 0.3;
+          const fx = Math.cos(tailAngle + 0.8) * (tailLen * 0.3 + f * tailLen * 0.15) + flicker * 0.3;
+          const fy = Math.sin(tailAngle + 0.8) * (tailLen * 0.3 + f * tailLen * 0.15) + flicker;
+          const fr = o.size * (0.5 - f * 0.08);
+          const fa = 0.5 - f * 0.1;
+          ctx.beginPath();
+          ctx.arc(fx, fy, Math.max(fr, 1), 0, Math.PI * 2);
+          ctx.fillStyle = f < 2 ? `rgba(251,191,36,${fa})` : f < 4 ? `rgba(249,115,22,${fa})` : `rgba(239,68,68,${fa * 0.6})`;
+          ctx.fill();
+        }
+        ctx.restore();
+
         ctx.rotate(rot);
-        // Outer glow
-        const glow = ctx.createRadialGradient(0, 0, o.size * 0.5, 0, 0, o.size * 2);
-        glow.addColorStop(0, 'rgba(249,115,22,0.3)');
-        glow.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = glow;
-        ctx.fillRect(-o.size*2, -o.size*2, o.size*4, o.size*4);
-        // Rocky body
-        ctx.fillStyle = '#57534e';
+        
+        // Outer heat glow
+        ctx.shadowColor = '#f97316';
+        ctx.shadowBlur = o.size * 0.8;
+        
+        // Rocky body with gradient
+        const bodyGrad = ctx.createRadialGradient(o.size * -0.2, o.size * -0.2, 0, 0, 0, o.size * 0.8);
+        bodyGrad.addColorStop(0, '#78716c');
+        bodyGrad.addColorStop(0.6, '#44403c');
+        bodyGrad.addColorStop(1, '#1c1917');
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
         const pts = o.points || 7;
         for (let i = 0; i < pts; i++) {
           const ang = (i / pts) * Math.PI * 2;
-          const r = o.size * (0.6 + Math.sin(i * 3.7) * 0.35);
+          const r = o.size * (0.55 + Math.sin(i * 3.7 + o.size) * 0.3);
           if (i === 0) ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
           else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
         }
         ctx.closePath();
         ctx.fill();
-        // Surface detail
-        ctx.fillStyle = '#44403c';
-        ctx.beginPath();
-        ctx.arc(o.size * 0.15, -o.size * 0.1, o.size * 0.22, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(-o.size * 0.2, o.size * 0.15, o.size * 0.15, 0, Math.PI * 2);
-        ctx.fill();
-        // Highlight edge
-        ctx.strokeStyle = '#78716c';
+        ctx.shadowBlur = 0;
+
+        // Lava cracks (glowing orange/yellow lines across surface)
+        ctx.strokeStyle = '#fbbf24';
         ctx.lineWidth = 1.5;
+        ctx.shadowColor = '#f97316';
+        ctx.shadowBlur = 4;
+        // Crack 1
         ctx.beginPath();
-        ctx.arc(0, 0, o.size * 0.55, -0.8, 0.8);
+        ctx.moveTo(-o.size * 0.35, -o.size * 0.15);
+        ctx.lineTo(-o.size * 0.05, o.size * 0.1);
+        ctx.lineTo(o.size * 0.2, o.size * 0.35);
         ctx.stroke();
+        // Crack 2
+        ctx.beginPath();
+        ctx.moveTo(o.size * 0.1, -o.size * 0.35);
+        ctx.lineTo(o.size * 0.05, -o.size * 0.05);
+        ctx.lineTo(-o.size * 0.15, o.size * 0.2);
+        ctx.stroke();
+        // Crack 3 — small
+        ctx.strokeStyle = '#f97316';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(o.size * 0.25, -o.size * 0.1);
+        ctx.lineTo(o.size * 0.35, o.size * 0.15);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Hot spots (glowing embers in cracks)
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(-o.size * 0.05, o.size * 0.1, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(o.size * 0.05, -o.size * 0.05, 1.5, 0, Math.PI * 2);
+        ctx.fill();
         
       } else if (o.type === 'boss' && !o.isRage) {
         // Mini-boss: UFO saucer with dome and spinning lights
@@ -2168,12 +2212,12 @@ function checkEvents() {
         State.debrisPenalty *= evt.penalty;
         DOM.statEvents.textContent = `Debris (${(State.debrisPenalty * 100).toFixed(0)}%)`;
         renderer.eventMarkers.push({ tick: State.currentTick, type: 'debris', label: '☄️' });
-        // Spawn visual debris
-        for (let i = 0; i < 3; i++) {
+        // Spawn fiery asteroids
+        for (let i = 0; i < 4; i++) {
           renderer.obstacles.push({
-            type: 'debris', x: renderer.rocketX + (Math.random()-0.5) * 200,
-            y: renderer.rocketY - 50 - Math.random() * 100,
-            size: 10 + Math.random() * 15, alpha: 1, points: 5 + Math.floor(Math.random()*4)
+            type: 'debris', x: renderer.rocketX + (Math.random()-0.5) * 180,
+            y: renderer.rocketY - 40 - Math.random() * 80,
+            size: 14 + Math.random() * 18, alpha: 1, points: 6 + Math.floor(Math.random()*3)
           });
         }
         renderer.shake(6);
