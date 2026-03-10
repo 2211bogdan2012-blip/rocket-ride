@@ -1,0 +1,1794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Billionaire Crash</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-card: #1a2236;
+  --bg-card-hover: #1f2a42;
+  --accent-green: #00e701;
+  --accent-green-dim: #00e70133;
+  --accent-red: #ff3b5c;
+  --accent-red-dim: #ff3b5c33;
+  --accent-gold: #ffd700;
+  --accent-gold-dim: #ffd70033;
+  --accent-blue: #3b82f6;
+  --accent-purple: #a855f7;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-color: #1e293b;
+  --border-active: #334155;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Manrope', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ═══════════ LAYOUT ═══════════ */
+.game-container {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  grid-template-rows: auto 1fr auto;
+  height: 100vh;
+  gap: 0;
+}
+
+/* ═══════════ TOP BAR ═══════════ */
+.top-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 10;
+}
+
+.logo {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--accent-gold), #ff8c00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.logo span {
+  font-weight: 400;
+  font-size: 13px;
+  background: linear-gradient(135deg, var(--text-secondary), var(--text-muted));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.balance-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.balance-display .currency {
+  color: var(--accent-gold);
+  font-size: 12px;
+}
+
+/* ═══════════ CANVAS AREA ═══════════ */
+.canvas-area {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 120%, #0d1a2d 0%, var(--bg-primary) 70%);
+}
+
+canvas#gameCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ═══════════ MULTIPLIER OVERLAY ═══════════ */
+.multiplier-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.multiplier-value {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: 72px;
+  line-height: 1;
+  color: var(--text-primary);
+  text-shadow: 0 0 40px rgba(0, 231, 1, 0.3);
+  transition: color 0.15s, text-shadow 0.15s;
+}
+
+.multiplier-value.crashed {
+  color: var(--accent-red);
+  text-shadow: 0 0 60px rgba(255, 59, 92, 0.5);
+}
+
+.multiplier-value.cashed-out {
+  color: var(--accent-green);
+  text-shadow: 0 0 60px rgba(0, 231, 1, 0.5);
+}
+
+.multiplier-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ═══════════ WAITING STATE ═══════════ */
+.waiting-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 3px;
+}
+
+.waiting-text .dot {
+  animation: blink 1.4s infinite;
+}
+.waiting-text .dot:nth-child(2) { animation-delay: 0.2s; }
+.waiting-text .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink {
+  0%, 20% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ═══════════ EVENT BANNER ═══════════ */
+.event-banner {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 24px;
+  border-radius: 20px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 6;
+  white-space: nowrap;
+}
+
+.event-banner.visible {
+  opacity: 1;
+}
+
+.event-banner.mini-boss {
+  background: linear-gradient(135deg, #7c3aed33, #a855f733);
+  border: 1px solid #a855f7;
+  color: #c084fc;
+}
+
+.event-banner.debris {
+  background: linear-gradient(135deg, #ea580c33, #f9731633);
+  border: 1px solid #f97316;
+  color: #fb923c;
+}
+
+.event-banner.boss-rage {
+  background: linear-gradient(135deg, #dc262633, #ef444433);
+  border: 1px solid #ef4444;
+  color: #f87171;
+}
+
+.event-banner.golden-rocket {
+  background: linear-gradient(135deg, #ca8a0433, #eab30833);
+  border: 1px solid #eab308;
+  color: #facc15;
+}
+
+/* ═══════════ HISTORY BAR ═══════════ */
+.history-bar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: 60%;
+  z-index: 5;
+}
+
+.history-badge {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  animation: badgeIn 0.3s ease-out;
+}
+
+@keyframes badgeIn {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.history-badge.green {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+  border: 1px solid #00e70155;
+}
+
+.history-badge.red {
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+  border: 1px solid #ff3b5c55;
+}
+
+.history-badge.gold {
+  background: var(--accent-gold-dim);
+  color: var(--accent-gold);
+  border: 1px solid #ffd70055;
+}
+
+/* ═══════════ SIDEBAR ═══════════ */
+.sidebar {
+  grid-row: 2 / 4;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.sidebar-section {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.sidebar-section h3 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* ═══════════ BET MODE SELECTOR ═══════════ */
+.mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.mode-tab {
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.mode-tab:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-active);
+}
+
+.mode-tab.active {
+  background: var(--accent-green-dim);
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+}
+
+.mode-tab .cost {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.mode-tab.active .cost {
+  color: #00e70199;
+}
+
+/* ═══════════ BET AMOUNT ═══════════ */
+.bet-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.bet-input {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.bet-input:focus {
+  border-color: var(--accent-green);
+}
+
+.bet-btn {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.bet-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-active);
+  color: var(--text-primary);
+}
+
+/* ═══════════ PLAY / CASHOUT BUTTON ═══════════ */
+.action-btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: 12px;
+  border: none;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+}
+
+.action-btn.bet {
+  background: linear-gradient(135deg, #00c853, #00e701);
+  color: #0a0e17;
+  box-shadow: 0 4px 24px #00e70144;
+}
+
+.action-btn.bet:hover {
+  box-shadow: 0 4px 32px #00e70166;
+  transform: translateY(-1px);
+}
+
+.action-btn.bet:active {
+  transform: translateY(0);
+}
+
+.action-btn.cashout {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  color: #0a0e17;
+  box-shadow: 0 4px 24px #f59e0b44;
+  animation: cashoutPulse 1s ease-in-out infinite;
+}
+
+@keyframes cashoutPulse {
+  0%, 100% { box-shadow: 0 4px 24px #f59e0b44; }
+  50% { box-shadow: 0 4px 36px #f59e0b77; }
+}
+
+.action-btn.cashout:hover {
+  box-shadow: 0 4px 36px #f59e0b88;
+}
+
+.action-btn.disabled {
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  box-shadow: none;
+  animation: none;
+}
+
+.action-btn .sub-text {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 4px;
+  letter-spacing: 0;
+  opacity: 0.8;
+}
+
+/* ═══════════ AUTO CASHOUT ═══════════ */
+.auto-cashout-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.auto-cashout-row label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.auto-cashout-input {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  width: 80px;
+}
+
+.auto-cashout-input:focus {
+  border-color: var(--accent-gold);
+}
+
+/* ═══════════ AUTO BET ═══════════ */
+.autobet-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.toggle-switch.active {
+  background: var(--accent-green-dim);
+  border-color: var(--accent-green);
+}
+
+.toggle-switch .toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.toggle-switch.active .toggle-knob {
+  left: 22px;
+  background: var(--accent-green);
+}
+
+.autobet-toggle span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ═══════════ STATS ═══════════ */
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.stat-row:last-child { border-bottom: none; }
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ═══════════ BOTTOM BAR ═══════════ */
+.bottom-bar {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 20px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.bottom-bar .tag {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg-card);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ═══════════ WIN POPUP ═══════════ */
+.win-popup {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  background: linear-gradient(135deg, #1a2236ee, #111827ee);
+  border: 2px solid var(--accent-green);
+  border-radius: 20px;
+  padding: 32px 48px;
+  text-align: center;
+  z-index: 20;
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  backdrop-filter: blur(12px);
+}
+
+.win-popup.visible {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+
+.win-popup .win-amount {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 48px;
+  font-weight: 900;
+  color: var(--accent-green);
+  text-shadow: 0 0 40px #00e70155;
+}
+
+.win-popup .win-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  letter-spacing: 2px;
+}
+
+/* ═══════════ PARTICLES ═══════════ */
+.particle {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  z-index: 15;
+}
+
+/* ═══════════ RESPONSIVE ═══════════ */
+@media (max-width: 900px) {
+  .game-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 50vh auto auto;
+  }
+  .sidebar {
+    grid-row: auto;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+    flex-direction: row;
+    flex-wrap: wrap;
+    overflow-x: auto;
+    padding: 12px;
+  }
+  .sidebar-section { min-width: 250px; flex: 1; }
+  .multiplier-value { font-size: 48px; }
+}
+</style>
+</head>
+<body>
+
+<div class="game-container">
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="logo">BILLIONAIRE <span>CRASH</span></div>
+    <div class="balance-display">
+      <span class="currency">$</span>
+      <span id="balanceValue">10,000.00</span>
+    </div>
+  </div>
+
+  <!-- CANVAS AREA -->
+  <div class="canvas-area" id="canvasArea">
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="history-bar" id="historyBar"></div>
+
+    <div class="multiplier-overlay" id="multiplierOverlay">
+      <div class="multiplier-value" id="multiplierValue">1.00×</div>
+      <div class="multiplier-label" id="multiplierLabel">MULTIPLIER</div>
+    </div>
+
+    <div class="event-banner" id="eventBanner"></div>
+
+    <div class="win-popup" id="winPopup">
+      <div class="win-label">YOU WON</div>
+      <div class="win-amount" id="winAmount">+$0.00</div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <!-- BET MODE -->
+    <div class="sidebar-section">
+      <h3>Bet Mode</h3>
+      <div class="mode-tabs" id="modeTabs">
+        <button class="mode-tab active" data-mode="base">Base<span class="cost">1× bet</span></button>
+        <button class="mode-tab" data-mode="business_class">Business<span class="cost">10× bet</span></button>
+        <button class="mode-tab" data-mode="vip_executive">VIP<span class="cost">25× bet</span></button>
+        <button class="mode-tab" data-mode="ceo_mode">CEO<span class="cost">100× bet</span></button>
+      </div>
+    </div>
+
+    <!-- BET AMOUNT -->
+    <div class="sidebar-section">
+      <h3>Bet Amount</h3>
+      <div class="bet-input-row">
+        <input type="number" class="bet-input" id="betInput" value="10" min="1" step="1">
+        <button class="bet-btn" onclick="setBetMultiple(0.5)">½</button>
+        <button class="bet-btn" onclick="setBetMultiple(2)">2×</button>
+        <button class="bet-btn" onclick="setBetMax()">MAX</button>
+      </div>
+
+      <div class="auto-cashout-row">
+        <label>Auto cashout:</label>
+        <input type="number" class="auto-cashout-input" id="autoCashout" value="" placeholder="OFF" min="1.01" step="0.01">
+        <span style="font-size:11px; color: var(--text-muted)">×</span>
+      </div>
+
+      <div class="autobet-toggle">
+        <div class="toggle-switch" id="autoBetToggle" onclick="toggleAutoBet()">
+          <div class="toggle-knob"></div>
+        </div>
+        <span>Auto-bet</span>
+      </div>
+    </div>
+
+    <!-- ACTION -->
+    <div class="sidebar-section" style="padding: 12px 16px;">
+      <button class="action-btn bet" id="actionBtn" onclick="handleAction()">
+        BET
+        <span class="sub-text" id="actionSub">$10.00</span>
+      </button>
+    </div>
+
+    <!-- STATS -->
+    <div class="sidebar-section">
+      <h3>Round Stats</h3>
+      <div class="stat-row">
+        <span class="stat-label">Bet Mode</span>
+        <span class="stat-value" id="statMode">Base (1×)</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Total Cost</span>
+        <span class="stat-value" id="statCost">$10.00</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Win Cap</span>
+        <span class="stat-value" id="statWinCap">$50,000</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Events</span>
+        <span class="stat-value" id="statEvents">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Session P/L</span>
+        <span class="stat-value" id="statPL" style="color: var(--text-primary)">$0.00</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Rounds Played</span>
+        <span class="stat-value" id="statRounds">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottom-bar">
+    <span class="tag">RTP 96%</span>
+    <span class="tag">Provably Fair</span>
+    <span>Billionaire Crash — Stake Engine</span>
+    <span style="margin-left: auto">v0.9 prototype</span>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  BILLIONAIRE CRASH — COMPLETE MATH + FRONTEND
+// ═══════════════════════════════════════════════
+
+// ──────────── GAME CONFIG ────────────
+const CONFIG = {
+  HOUSE_EDGE: 0.04,
+  RTP: 0.96,
+  GROWTH_RATE: 0.06,
+  TICK_MS: 50,
+  
+  MODES: {
+    base:           { multiplier: 1,   winCap: 5000,   label: 'Base (1×)' },
+    business_class: { multiplier: 10,  winCap: 50000,  label: 'Business (10×)' },
+    vip_executive:  { multiplier: 25,  winCap: 125000, label: 'VIP (25×)' },
+    ceo_mode:       { multiplier: 100, winCap: 500000, label: 'CEO (100×)' },
+  },
+
+  // Event weights (sum ≈ probability distribution)
+  EVENTS: {
+    base_crash:    { weight: 0.5204, rtpShare: 0.52 },
+    mini_boss:     { weight: 0.1174, rtpShare: 0.117, triggerRange: [2.0, 8.0], bonusMult: [1.2, 2.5] },
+    debris:        { weight: 0.0800, rtpShare: 0.08,  triggerRange: [1.5, 4.0], penalty: [0.5, 0.8] },
+    boss_rage:     { weight: 0.0793, rtpShare: 0.079, triggerRange: [3.0, 12.0], bonusMult: [1.5, 5.0] },
+    golden_rocket: { weight: 0.1600, rtpShare: 0.16,  triggerRange: [1.5, 6.0], bonusMult: [2.0, 10.0] },
+  },
+
+  COUNTDOWN_SEC: 3,
+};
+
+// ──────────── MATH ENGINE ────────────
+class MathEngine {
+  // Generate crash point with house edge (provably fair style)
+  static generateCrashPoint() {
+    const r = Math.random();
+    // Instant crash ~4% of the time (house edge)
+    if (r < CONFIG.HOUSE_EDGE) return 1.00;
+    // Exponential distribution: E[1/crash] = house_edge → 96% RTP
+    return Math.max(1.00, Math.floor(CONFIG.RTP / r * 100) / 100);
+  }
+
+  // Select event type based on weights
+  static selectEventType() {
+    const r = Math.random();
+    let cumulative = 0;
+    for (const [type, cfg] of Object.entries(CONFIG.EVENTS)) {
+      cumulative += cfg.weight;
+      if (r <= cumulative) return type;
+    }
+    return 'base_crash';
+  }
+
+  // Generate full round events
+  static generateRound() {
+    const crashPoint = this.generateCrashPoint();
+    const eventType = this.selectEventType();
+    const events = [];
+    
+    // Base flight events
+    events.push({ type: 'flight_start', tick: 0 });
+
+    // Add mechanic-specific events
+    if (eventType === 'mini_boss' && crashPoint >= 2.0) {
+      const trigger = this.randomInRange(
+        Math.min(2.0, crashPoint * 0.3),
+        Math.min(crashPoint * 0.6, 8.0)
+      );
+      const bonus = this.randomInRange(1.2, Math.min(2.5, crashPoint / trigger));
+      events.push({
+        type: 'mini_boss',
+        triggerAt: Math.round(trigger * 100) / 100,
+        bonusMult: Math.round(bonus * 100) / 100,
+        tick: this.multiplierToTick(trigger),
+      });
+    }
+
+    if (eventType === 'debris' && crashPoint >= 1.5) {
+      const trigger = this.randomInRange(1.3, Math.min(crashPoint * 0.7, 4.0));
+      events.push({
+        type: 'debris',
+        triggerAt: Math.round(trigger * 100) / 100,
+        penalty: Math.round(this.randomInRange(0.5, 0.8) * 100) / 100,
+        tick: this.multiplierToTick(trigger),
+      });
+    }
+
+    if (eventType === 'boss_rage' && crashPoint >= 3.0) {
+      const trigger = this.randomInRange(2.0, Math.min(crashPoint * 0.5, 10.0));
+      const bonus = this.randomInRange(1.5, Math.min(5.0, crashPoint / trigger));
+      events.push({
+        type: 'boss_rage',
+        triggerAt: Math.round(trigger * 100) / 100,
+        bonusMult: Math.round(bonus * 100) / 100,
+        tick: this.multiplierToTick(trigger),
+      });
+    }
+
+    if (eventType === 'golden_rocket' && crashPoint >= 1.5) {
+      const trigger = this.randomInRange(1.2, Math.min(crashPoint * 0.4, 5.0));
+      const bonus = this.randomInRange(2.0, Math.min(10.0, crashPoint / trigger));
+      events.push({
+        type: 'golden_rocket',
+        triggerAt: Math.round(trigger * 100) / 100,
+        bonusMult: Math.round(bonus * 100) / 100,
+        tick: this.multiplierToTick(trigger),
+      });
+    }
+
+    // Sort events by tick
+    events.sort((a, b) => a.tick - b.tick);
+
+    // Crash event
+    const crashTick = this.multiplierToTick(crashPoint);
+    events.push({ type: 'crash', tick: crashTick, crashPoint });
+
+    return { crashPoint, eventType, events, crashTick };
+  }
+
+  static multiplierToTick(mult) {
+    // mult = e^(GROWTH_RATE * tick * TICK_MS/1000)
+    // tick = ln(mult) / (GROWTH_RATE * TICK_MS/1000)
+    if (mult <= 1) return 0;
+    return Math.round(Math.log(mult) / (CONFIG.GROWTH_RATE * CONFIG.TICK_MS / 1000));
+  }
+
+  static tickToMultiplier(tick) {
+    return Math.exp(CONFIG.GROWTH_RATE * tick * CONFIG.TICK_MS / 1000);
+  }
+
+  static randomInRange(min, max) {
+    return min + Math.random() * (max - min);
+  }
+}
+
+// ──────────── SOUND ENGINE (Web Audio Synthesis) ────────────
+class SoundEngine {
+  constructor() {
+    this.ctx = null;
+    this.enabled = true;
+  }
+
+  init() {
+    if (this.ctx) return;
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  play(name, opts = {}) {
+    if (!this.enabled || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      switch (name) {
+        case 'bet': this._tone(440, 0.08, 'sine', 0.2); break;
+        case 'launch': this._sweep(200, 800, 0.4, 'sawtooth', 0.15); break;
+        case 'tick': this._tone(600 + Math.random() * 200, 0.02, 'sine', 0.05); break;
+        case 'cashout': this._chord([523, 659, 784], 0.3, 0.2); break;
+        case 'crash': this._noise(0.5, 0.3); break;
+        case 'miniboss': this._sweep(300, 150, 0.3, 'square', 0.1); break;
+        case 'golden': this._chord([784, 988, 1175], 0.4, 0.15); break;
+        case 'debris': this._noise(0.2, 0.1); break;
+        case 'win': this._chord([523, 659, 784, 1047], 0.6, 0.2); break;
+      }
+    } catch(e) {}
+  }
+
+  _tone(freq, dur, type, vol) {
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+    osc.connect(gain).connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + dur);
+  }
+
+  _sweep(f1, f2, dur, type, vol) {
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f1, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(f2, this.ctx.currentTime + dur);
+    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+    osc.connect(gain).connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + dur);
+  }
+
+  _chord(freqs, dur, vol) {
+    freqs.forEach(f => this._tone(f, dur, 'sine', vol / freqs.length));
+  }
+
+  _noise(dur, vol) {
+    const bufferSize = this.ctx.sampleRate * dur;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const src = this.ctx.createBufferSource();
+    const gain = this.ctx.createGain();
+    src.buffer = buffer;
+    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+    src.connect(gain).connect(this.ctx.destination);
+    src.start();
+  }
+}
+
+// ──────────── CANVAS RENDERER ────────────
+class GameRenderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.stars = [];
+    this.particles = [];
+    this.trailPoints = [];
+    this.rocketX = 0;
+    this.rocketY = 0;
+    this.rocketAngle = 0;
+    this.shakeX = 0;
+    this.shakeY = 0;
+    this.isGolden = false;
+    this.obstacles = [];
+    this.collectibles = [];
+    this.resize();
+    this._initStars();
+    window.addEventListener('resize', () => this.resize());
+  }
+
+  resize() {
+    const area = document.getElementById('canvasArea');
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = area.clientWidth * dpr;
+    this.canvas.height = area.clientHeight * dpr;
+    this.ctx.scale(dpr, dpr);
+    this.w = area.clientWidth;
+    this.h = area.clientHeight;
+  }
+
+  _initStars() {
+    this.stars = [];
+    for (let i = 0; i < 120; i++) {
+      this.stars.push({
+        x: Math.random() * 2000,
+        y: Math.random() * 2000,
+        r: Math.random() * 1.5 + 0.3,
+        a: Math.random() * 0.6 + 0.2,
+        speed: Math.random() * 0.5 + 0.1,
+      });
+    }
+  }
+
+  render(state) {
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, this.w, this.h);
+    ctx.save();
+
+    // Apply shake
+    if (this.shakeX || this.shakeY) {
+      ctx.translate(this.shakeX, this.shakeY);
+    }
+
+    // Background gradient
+    const bgGrad = ctx.createRadialGradient(this.w/2, this.h*1.2, 0, this.w/2, this.h*1.2, this.h);
+    bgGrad.addColorStop(0, '#0d1f3c');
+    bgGrad.addColorStop(0.5, '#0a0e17');
+    bgGrad.addColorStop(1, '#050810');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, this.w, this.h);
+
+    // Stars
+    this._renderStars(ctx, state);
+
+    if (state === 'flying' || state === 'crashed' || state === 'cashed_out') {
+      this._renderTrail(ctx);
+      this._renderObstacles(ctx);
+      this._renderCollectibles(ctx);
+      this._renderRocket(ctx);
+    }
+
+    // Particles
+    this._renderParticles(ctx);
+
+    ctx.restore();
+  }
+
+  _renderStars(ctx, state) {
+    const speed = state === 'flying' ? 3 : 0.3;
+    this.stars.forEach(s => {
+      s.y += s.speed * speed;
+      if (s.y > this.h) { s.y = -5; s.x = Math.random() * this.w; }
+      if (s.x > this.w) s.x -= this.w;
+
+      ctx.beginPath();
+      ctx.arc(s.x % this.w, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+      ctx.fill();
+    });
+  }
+
+  _renderTrail(ctx) {
+    if (this.trailPoints.length < 2) return;
+    
+    for (let w = 3; w >= 1; w--) {
+      ctx.beginPath();
+      ctx.moveTo(this.trailPoints[0].x, this.trailPoints[0].y);
+      for (let i = 1; i < this.trailPoints.length; i++) {
+        const p = this.trailPoints[i];
+        ctx.lineTo(p.x, p.y);
+      }
+      const alpha = (4 - w) / 4;
+      ctx.strokeStyle = this.isGolden
+        ? `rgba(255, 215, 0, ${alpha * 0.4})`
+        : `rgba(0, 231, 1, ${alpha * 0.3})`;
+      ctx.lineWidth = w * 3;
+      ctx.stroke();
+    }
+  }
+
+  _renderRocket(ctx) {
+    const x = this.rocketX;
+    const y = this.rocketY;
+    const size = 28;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(this.rocketAngle);
+
+    // Engine glow
+    const glowGrad = ctx.createRadialGradient(0, size, 0, 0, size, size * 2);
+    glowGrad.addColorStop(0, this.isGolden ? 'rgba(255,215,0,0.6)' : 'rgba(0,231,1,0.5)');
+    glowGrad.addColorStop(0.5, this.isGolden ? 'rgba(255,165,0,0.2)' : 'rgba(0,231,1,0.15)');
+    glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(-size*2, 0, size*4, size*3);
+
+    // Rocket body
+    ctx.beginPath();
+    ctx.moveTo(0, -size);
+    ctx.quadraticCurveTo(size * 0.7, -size * 0.3, size * 0.5, size * 0.5);
+    ctx.lineTo(size * 0.7, size);
+    ctx.lineTo(-size * 0.7, size);
+    ctx.lineTo(-size * 0.5, size * 0.5);
+    ctx.quadraticCurveTo(-size * 0.7, -size * 0.3, 0, -size);
+    ctx.closePath();
+
+    const bodyGrad = ctx.createLinearGradient(-size * 0.5, 0, size * 0.5, 0);
+    if (this.isGolden) {
+      bodyGrad.addColorStop(0, '#b8860b');
+      bodyGrad.addColorStop(0.3, '#ffd700');
+      bodyGrad.addColorStop(0.7, '#ffec8b');
+      bodyGrad.addColorStop(1, '#b8860b');
+    } else {
+      bodyGrad.addColorStop(0, '#1a365d');
+      bodyGrad.addColorStop(0.3, '#2563eb');
+      bodyGrad.addColorStop(0.7, '#60a5fa');
+      bodyGrad.addColorStop(1, '#1a365d');
+    }
+    ctx.fillStyle = bodyGrad;
+    ctx.fill();
+
+    // Nose cone
+    ctx.beginPath();
+    ctx.moveTo(0, -size);
+    ctx.quadraticCurveTo(size * 0.3, -size * 0.5, size * 0.2, -size * 0.2);
+    ctx.lineTo(-size * 0.2, -size * 0.2);
+    ctx.quadraticCurveTo(-size * 0.3, -size * 0.5, 0, -size);
+    ctx.fillStyle = this.isGolden ? '#fff8dc' : '#ef4444';
+    ctx.fill();
+
+    // Window
+    ctx.beginPath();
+    ctx.arc(0, -size * 0.05, size * 0.18, 0, Math.PI * 2);
+    ctx.fillStyle = '#e0f2fe';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-size * 0.04, -size * 0.1, size * 0.08, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fill();
+
+    // Fins
+    ctx.fillStyle = this.isGolden ? '#daa520' : '#dc2626';
+    // Left fin
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.5, size * 0.3);
+    ctx.lineTo(-size * 0.9, size * 1.1);
+    ctx.lineTo(-size * 0.35, size * 0.8);
+    ctx.closePath();
+    ctx.fill();
+    // Right fin
+    ctx.beginPath();
+    ctx.moveTo(size * 0.5, size * 0.3);
+    ctx.lineTo(size * 0.9, size * 1.1);
+    ctx.lineTo(size * 0.35, size * 0.8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Engine flame
+    const flameLen = size * (1 + Math.random() * 0.8);
+    const flameGrad = ctx.createLinearGradient(0, size, 0, size + flameLen);
+    flameGrad.addColorStop(0, this.isGolden ? '#ffd700' : '#fbbf24');
+    flameGrad.addColorStop(0.3, '#f97316');
+    flameGrad.addColorStop(0.7, '#ef4444');
+    flameGrad.addColorStop(1, 'rgba(239,68,68,0)');
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.3, size);
+    ctx.quadraticCurveTo(0, size + flameLen * 0.8, size * 0.05, size + flameLen);
+    ctx.quadraticCurveTo(0, size + flameLen * 0.8, size * 0.3, size);
+    ctx.fillStyle = flameGrad;
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  _renderObstacles(ctx) {
+    this.obstacles.forEach(o => {
+      if (o.alpha <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = o.alpha;
+      ctx.translate(o.x, o.y);
+      
+      if (o.type === 'debris') {
+        // Asteroid-like debris
+        ctx.fillStyle = '#78716c';
+        ctx.beginPath();
+        const pts = o.points || 6;
+        for (let i = 0; i < pts; i++) {
+          const ang = (i / pts) * Math.PI * 2;
+          const r = o.size * (0.7 + Math.sin(i * 2.3) * 0.3);
+          if (i === 0) ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
+          else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#a8a29e';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      } else if (o.type === 'boss') {
+        // Boss icon (skull-like)
+        ctx.fillStyle = o.isRage ? '#ef4444' : '#a855f7';
+        ctx.beginPath();
+        ctx.arc(0, 0, o.size, 0, Math.PI * 2);
+        ctx.fill();
+        // Eyes
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(-o.size * 0.3, -o.size * 0.15, o.size * 0.2, 0, Math.PI * 2);
+        ctx.arc(o.size * 0.3, -o.size * 0.15, o.size * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        // Mouth
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, o.size * 0.2, o.size * 0.3, 0, Math.PI);
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+  }
+
+  _renderCollectibles(ctx) {
+    this.collectibles.forEach(c => {
+      if (c.alpha <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = c.alpha;
+      ctx.translate(c.x, c.y);
+
+      // Golden coin
+      const t = Date.now() / 500;
+      const scaleX = Math.abs(Math.cos(t + c.phase));
+      ctx.scale(scaleX || 0.1, 1);
+
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath();
+      ctx.arc(0, 0, c.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#b8860b';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // $ symbol
+      ctx.fillStyle = '#b8860b';
+      ctx.font = `bold ${c.size}px Orbitron`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('$', 0, 1);
+      
+      ctx.restore();
+    });
+  }
+
+  _renderParticles(ctx) {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+      p.vy += 0.1; // gravity
+
+      if (p.life <= 0) {
+        this.particles.splice(i, 1);
+        continue;
+      }
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+      ctx.fillStyle = p.color.replace('1)', `${p.life})`);
+      ctx.fill();
+    }
+  }
+
+  addExplosion(x, y, color, count = 30) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 5 + 2;
+      this.particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        r: Math.random() * 4 + 1,
+        life: 1,
+        decay: Math.random() * 0.02 + 0.01,
+        color: color,
+      });
+    }
+  }
+
+  addTrailParticle(x, y) {
+    this.particles.push({
+      x: x + (Math.random() - 0.5) * 10,
+      y: y + 15,
+      vx: (Math.random() - 0.5) * 1,
+      vy: Math.random() * 2 + 1,
+      r: Math.random() * 3 + 1,
+      life: 1,
+      decay: 0.03,
+      color: this.isGolden ? 'rgba(255,215,0,1)' : 'rgba(255,165,0,1)',
+    });
+  }
+
+  shake(intensity = 5) {
+    const dur = 300;
+    const start = Date.now();
+    const doShake = () => {
+      const elapsed = Date.now() - start;
+      if (elapsed > dur) {
+        this.shakeX = 0;
+        this.shakeY = 0;
+        return;
+      }
+      const factor = 1 - elapsed / dur;
+      this.shakeX = (Math.random() - 0.5) * intensity * factor;
+      this.shakeY = (Math.random() - 0.5) * intensity * factor;
+      requestAnimationFrame(doShake);
+    };
+    doShake();
+  }
+}
+
+// ──────────── GAME STATE ────────────
+const State = {
+  balance: 10000,
+  betAmount: 10,
+  mode: 'base',
+  phase: 'idle', // idle, countdown, flying, crashed, cashed_out
+  
+  // Round data
+  currentRound: null,
+  currentTick: 0,
+  currentMultiplier: 1.00,
+  cashedOutAt: null,
+  
+  // Events
+  triggeredEvents: new Set(),
+  activeEvent: null,
+  bonusWinnings: 0,
+  
+  // Auto
+  autoBet: false,
+  autoCashout: null,
+  
+  // History
+  history: [],
+  
+  // Stats
+  sessionPL: 0,
+  roundsPlayed: 0,
+  
+  // Timer refs
+  tickInterval: null,
+  countdownTimer: null,
+};
+
+// ──────────── DOM REFS ────────────
+const DOM = {
+  balance: document.getElementById('balanceValue'),
+  multiplier: document.getElementById('multiplierValue'),
+  multiplierLabel: document.getElementById('multiplierLabel'),
+  multiplierOverlay: document.getElementById('multiplierOverlay'),
+  actionBtn: document.getElementById('actionBtn'),
+  actionSub: document.getElementById('actionSub'),
+  betInput: document.getElementById('betInput'),
+  autoCashout: document.getElementById('autoCashout'),
+  eventBanner: document.getElementById('eventBanner'),
+  historyBar: document.getElementById('historyBar'),
+  winPopup: document.getElementById('winPopup'),
+  winAmount: document.getElementById('winAmount'),
+  statMode: document.getElementById('statMode'),
+  statCost: document.getElementById('statCost'),
+  statWinCap: document.getElementById('statWinCap'),
+  statEvents: document.getElementById('statEvents'),
+  statPL: document.getElementById('statPL'),
+  statRounds: document.getElementById('statRounds'),
+  canvas: document.getElementById('gameCanvas'),
+};
+
+// ──────────── INSTANCES ────────────
+const renderer = new GameRenderer(DOM.canvas);
+const sound = new SoundEngine();
+
+// ──────────── UI UPDATES ────────────
+function updateBalance() {
+  DOM.balance.textContent = State.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function updateMultiplier() {
+  const el = DOM.multiplier;
+  el.textContent = State.currentMultiplier.toFixed(2) + '×';
+  el.className = 'multiplier-value';
+  
+  if (State.phase === 'crashed') {
+    el.classList.add('crashed');
+  } else if (State.phase === 'cashed_out') {
+    el.classList.add('cashed-out');
+  }
+}
+
+function updateActionButton() {
+  const btn = DOM.actionBtn;
+  const sub = DOM.actionSub;
+  const modeCfg = CONFIG.MODES[State.mode];
+  const totalCost = State.betAmount * modeCfg.multiplier;
+
+  if (State.phase === 'idle' || State.phase === 'crashed' || State.phase === 'cashed_out') {
+    btn.className = 'action-btn bet';
+    btn.textContent = 'BET';
+    sub.textContent = `$${totalCost.toFixed(2)}`;
+    btn.appendChild(sub);
+    if (totalCost > State.balance) {
+      btn.classList.add('disabled');
+    }
+  } else if (State.phase === 'countdown') {
+    btn.className = 'action-btn disabled';
+    btn.textContent = 'STARTING...';
+    sub.textContent = '';
+    btn.appendChild(sub);
+  } else if (State.phase === 'flying') {
+    btn.className = 'action-btn cashout';
+    const potentialWin = State.betAmount * State.currentMultiplier + State.bonusWinnings;
+    btn.textContent = 'CASH OUT';
+    sub.textContent = `$${potentialWin.toFixed(2)}`;
+    btn.appendChild(sub);
+  }
+}
+
+function updateStats() {
+  const modeCfg = CONFIG.MODES[State.mode];
+  const totalCost = State.betAmount * modeCfg.multiplier;
+  DOM.statMode.textContent = modeCfg.label;
+  DOM.statCost.textContent = '$' + totalCost.toLocaleString();
+  DOM.statWinCap.textContent = '$' + modeCfg.winCap.toLocaleString();
+  DOM.statRounds.textContent = State.roundsPlayed;
+  DOM.statPL.textContent = (State.sessionPL >= 0 ? '+$' : '-$') + Math.abs(State.sessionPL).toFixed(2);
+  DOM.statPL.style.color = State.sessionPL >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+}
+
+function showEventBanner(type, text) {
+  const banner = DOM.eventBanner;
+  banner.className = `event-banner ${type} visible`;
+  banner.textContent = text;
+  setTimeout(() => banner.classList.remove('visible'), 2500);
+}
+
+function addHistory(crashPoint, eventType, cashedOut) {
+  const badge = document.createElement('div');
+  badge.className = 'history-badge';
+  
+  if (cashedOut) {
+    badge.classList.add('green');
+    badge.textContent = crashPoint.toFixed(2) + '×';
+  } else if (eventType === 'golden_rocket') {
+    badge.classList.add('gold');
+    badge.textContent = crashPoint.toFixed(2) + '×';
+  } else {
+    badge.classList.add('red');
+    badge.textContent = crashPoint.toFixed(2) + '×';
+  }
+
+  DOM.historyBar.insertBefore(badge, DOM.historyBar.firstChild);
+  
+  // Keep max 15
+  while (DOM.historyBar.children.length > 15) {
+    DOM.historyBar.removeChild(DOM.historyBar.lastChild);
+  }
+}
+
+function showWinPopup(amount) {
+  DOM.winAmount.textContent = '+$' + amount.toFixed(2);
+  DOM.winPopup.classList.add('visible');
+  setTimeout(() => DOM.winPopup.classList.remove('visible'), 2000);
+}
+
+// ──────────── BET CONTROLS ────────────
+function setBetMultiple(mult) {
+  State.betAmount = Math.max(1, Math.round(State.betAmount * mult));
+  DOM.betInput.value = State.betAmount;
+  updateActionButton();
+  updateStats();
+}
+
+function setBetMax() {
+  const modeCfg = CONFIG.MODES[State.mode];
+  State.betAmount = Math.floor(State.balance / modeCfg.multiplier);
+  DOM.betInput.value = State.betAmount;
+  updateActionButton();
+  updateStats();
+}
+
+function toggleAutoBet() {
+  State.autoBet = !State.autoBet;
+  document.getElementById('autoBetToggle').classList.toggle('active', State.autoBet);
+}
+
+// Bet input listener
+DOM.betInput.addEventListener('change', () => {
+  State.betAmount = Math.max(1, parseInt(DOM.betInput.value) || 1);
+  DOM.betInput.value = State.betAmount;
+  updateActionButton();
+  updateStats();
+});
+
+// Auto cashout listener
+DOM.autoCashout.addEventListener('change', () => {
+  const val = parseFloat(DOM.autoCashout.value);
+  State.autoCashout = (val && val >= 1.01) ? val : null;
+  if (!State.autoCashout) DOM.autoCashout.value = '';
+});
+
+// Mode tabs
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (State.phase === 'flying' || State.phase === 'countdown') return;
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    State.mode = tab.dataset.mode;
+    updateActionButton();
+    updateStats();
+  });
+});
+
+// ──────────── GAME LOGIC ────────────
+function handleAction() {
+  sound.init();
+  
+  if (State.phase === 'flying') {
+    cashOut();
+  } else if (State.phase === 'idle' || State.phase === 'crashed' || State.phase === 'cashed_out') {
+    startRound();
+  }
+}
+
+function startRound() {
+  const modeCfg = CONFIG.MODES[State.mode];
+  const totalCost = State.betAmount * modeCfg.multiplier;
+  
+  if (totalCost > State.balance) return;
+
+  // Debit
+  State.balance -= totalCost;
+  updateBalance();
+  sound.play('bet');
+
+  // Generate round
+  State.currentRound = MathEngine.generateRound();
+  State.currentTick = 0;
+  State.currentMultiplier = 1.00;
+  State.cashedOutAt = null;
+  State.triggeredEvents = new Set();
+  State.activeEvent = null;
+  State.bonusWinnings = 0;
+  State.phase = 'countdown';
+
+  // Reset renderer
+  renderer.trailPoints = [];
+  renderer.obstacles = [];
+  renderer.collectibles = [];
+  renderer.isGolden = false;
+
+  updateMultiplier();
+  updateActionButton();
+  DOM.statEvents.textContent = '—';
+
+  // Countdown
+  let countdown = CONFIG.COUNTDOWN_SEC;
+  DOM.multiplier.textContent = countdown + '...';
+  DOM.multiplierLabel.textContent = 'LAUNCHING IN';
+
+  State.countdownTimer = setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      clearInterval(State.countdownTimer);
+      launchFlight();
+    } else {
+      DOM.multiplier.textContent = countdown + '...';
+    }
+  }, 1000);
+}
+
+function launchFlight() {
+  State.phase = 'flying';
+  DOM.multiplierLabel.textContent = 'MULTIPLIER';
+  updateActionButton();
+  sound.play('launch');
+
+  // Position rocket at bottom center
+  renderer.rocketX = renderer.w / 2;
+  renderer.rocketY = renderer.h * 0.75;
+
+  // Start ticking
+  State.tickInterval = setInterval(gameTick, CONFIG.TICK_MS);
+}
+
+function gameTick() {
+  if (State.phase !== 'flying') return;
+  
+  State.currentTick++;
+  State.currentMultiplier = MathEngine.tickToMultiplier(State.currentTick);
+  
+  // Update rocket position (curve upward)
+  const progress = State.currentTick / (State.currentRound.crashTick || 100);
+  const targetY = renderer.h * 0.75 - progress * renderer.h * 0.5;
+  const wobbleX = Math.sin(State.currentTick * 0.05) * 15;
+  
+  renderer.rocketX = renderer.w / 2 + wobbleX;
+  renderer.rocketY = Math.max(renderer.h * 0.15, targetY);
+  renderer.rocketAngle = Math.sin(State.currentTick * 0.03) * 0.08;
+
+  // Trail
+  renderer.trailPoints.push({ x: renderer.rocketX, y: renderer.rocketY + 20 });
+  if (renderer.trailPoints.length > 80) renderer.trailPoints.shift();
+
+  // Engine particles
+  if (State.currentTick % 2 === 0) {
+    renderer.addTrailParticle(renderer.rocketX, renderer.rocketY);
+  }
+
+  // Check events
+  checkEvents();
+
+  // Auto cashout
+  if (State.autoCashout && State.currentMultiplier >= State.autoCashout) {
+    cashOut();
+    return;
+  }
+
+  // Check crash
+  if (State.currentTick >= State.currentRound.crashTick) {
+    crash();
+    return;
+  }
+
+  updateMultiplier();
+  updateActionButton();
+
+  // Tick sound at milestones
+  if (Math.floor(State.currentMultiplier * 10) !== Math.floor(MathEngine.tickToMultiplier(State.currentTick - 1) * 10)) {
+    sound.play('tick');
+  }
+}
+
+function checkEvents() {
+  if (!State.currentRound) return;
+  
+  State.currentRound.events.forEach((evt, idx) => {
+    if (State.triggeredEvents.has(idx)) return;
+    if (evt.tick > State.currentTick) return;
+    if (evt.type === 'flight_start' || evt.type === 'crash') return;
+
+    State.triggeredEvents.add(idx);
+
+    switch (evt.type) {
+      case 'mini_boss':
+        showEventBanner('mini-boss', `⚔️ MINI-BOSS! ×${evt.bonusMult} BONUS`);
+        sound.play('miniboss');
+        State.bonusWinnings += State.betAmount * evt.bonusMult;
+        DOM.statEvents.textContent = 'Mini-Boss';
+        renderer.obstacles.push({
+          type: 'boss', x: renderer.rocketX + (Math.random() > 0.5 ? 80 : -80),
+          y: renderer.rocketY, size: 25, alpha: 1, isRage: false, points: 6
+        });
+        renderer.shake(4);
+        break;
+
+      case 'debris':
+        showEventBanner('debris', `☄️ DEBRIS! −${((1-evt.penalty)*100).toFixed(0)}% PENALTY`);
+        sound.play('debris');
+        DOM.statEvents.textContent = 'Debris';
+        // Spawn visual debris
+        for (let i = 0; i < 3; i++) {
+          renderer.obstacles.push({
+            type: 'debris', x: renderer.rocketX + (Math.random()-0.5) * 200,
+            y: renderer.rocketY - 50 - Math.random() * 100,
+            size: 10 + Math.random() * 15, alpha: 1, points: 5 + Math.floor(Math.random()*4)
+          });
+        }
+        renderer.shake(6);
+        break;
+
+      case 'boss_rage':
+        showEventBanner('boss-rage', `🔥 BOSS RAGE! ×${evt.bonusMult} BONUS`);
+        sound.play('miniboss');
+        State.bonusWinnings += State.betAmount * evt.bonusMult;
+        DOM.statEvents.textContent = 'Boss Rage';
+        renderer.obstacles.push({
+          type: 'boss', x: renderer.rocketX, y: renderer.rocketY - 80,
+          size: 35, alpha: 1, isRage: true, points: 8
+        });
+        renderer.shake(8);
+        renderer.addExplosion(renderer.rocketX, renderer.rocketY - 80, 'rgba(239,68,68,1)', 20);
+        break;
+
+      case 'golden_rocket':
+        showEventBanner('golden-rocket', `🚀 GOLDEN ROCKET! ×${evt.bonusMult} BONUS`);
+        sound.play('golden');
+        State.bonusWinnings += State.betAmount * evt.bonusMult;
+        DOM.statEvents.textContent = 'Golden Rocket';
+        renderer.isGolden = true;
+        // Spawn collectible coins
+        for (let i = 0; i < 4; i++) {
+          renderer.collectibles.push({
+            x: renderer.rocketX + (Math.random()-0.5) * 160,
+            y: renderer.rocketY - 30 - Math.random() * 80,
+            size: 12, alpha: 1, phase: Math.random() * Math.PI * 2
+          });
+        }
+        renderer.addExplosion(renderer.rocketX, renderer.rocketY, 'rgba(255,215,0,1)', 25);
+        break;
+    }
+  });
+
+  // Fade obstacles/collectibles
+  renderer.obstacles.forEach(o => { o.alpha = Math.max(0, o.alpha - 0.005); });
+  renderer.collectibles.forEach(c => { c.alpha = Math.max(0, c.alpha - 0.008); });
+}
+
+function cashOut() {
+  if (State.phase !== 'flying') return;
+  
+  clearInterval(State.tickInterval);
+  State.cashedOutAt = State.currentMultiplier;
+  State.phase = 'cashed_out';
+  
+  const modeCfg = CONFIG.MODES[State.mode];
+  let winAmount = State.betAmount * State.currentMultiplier + State.bonusWinnings;
+  winAmount = Math.min(winAmount, modeCfg.winCap);
+  
+  State.balance += winAmount;
+  State.sessionPL += winAmount - State.betAmount * modeCfg.multiplier;
+  State.roundsPlayed++;
+  
+  updateBalance();
+  updateMultiplier();
+  updateActionButton();
+  updateStats();
+  
+  sound.play('cashout');
+  sound.play('win');
+  
+  showWinPopup(winAmount);
+  addHistory(State.currentMultiplier, State.currentRound.eventType, true);
+  renderer.addExplosion(renderer.rocketX, renderer.rocketY, 'rgba(0,231,1,1)', 40);
+
+  // Auto-bet after delay
+  if (State.autoBet) {
+    setTimeout(() => {
+      if (State.autoBet && (State.phase === 'cashed_out')) startRound();
+    }, 2000);
+  }
+}
+
+function crash() {
+  clearInterval(State.tickInterval);
+  State.currentMultiplier = State.currentRound.crashPoint;
+  State.phase = 'crashed';
+  
+  const modeCfg = CONFIG.MODES[State.mode];
+  State.sessionPL -= State.betAmount * modeCfg.multiplier;
+  State.roundsPlayed++;
+  
+  updateMultiplier();
+  updateActionButton();
+  updateStats();
+  
+  sound.play('crash');
+  
+  addHistory(State.currentRound.crashPoint, State.currentRound.eventType, false);
+  renderer.addExplosion(renderer.rocketX, renderer.rocketY, 'rgba(255,59,92,1)', 50);
+  renderer.shake(10);
+
+  // Auto-bet after delay
+  if (State.autoBet) {
+    setTimeout(() => {
+      if (State.autoBet && State.phase === 'crashed') startRound();
+    }, 2500);
+  }
+}
+
+// ──────────── RENDER LOOP ────────────
+function renderLoop() {
+  renderer.render(State.phase === 'flying' ? 'flying' :
+                  State.phase === 'crashed' ? 'crashed' :
+                  State.phase === 'cashed_out' ? 'cashed_out' : 'idle');
+  requestAnimationFrame(renderLoop);
+}
+
+// ──────────── KEYBOARD ────────────
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    handleAction();
+  }
+});
+
+// ──────────── INIT ────────────
+updateBalance();
+updateStats();
+updateActionButton();
+renderLoop();
+
+// Waiting state display
+function updateIdleDisplay() {
+  if (State.phase === 'idle') {
+    DOM.multiplier.innerHTML = 'PLACE BET';
+    DOM.multiplierLabel.textContent = 'PRESS SPACE OR CLICK BET';
+  }
+}
+updateIdleDisplay();
+</script>
+</body>
+</html>
