@@ -462,7 +462,7 @@ canvas#gameCanvas {
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
   outline: none;
-  width: 80px;
+  min-width: 0;
 }
 
 .auto-cashout-input:focus {
@@ -765,9 +765,9 @@ canvas#gameCanvas {
     <div class="sidebar-section">
       <h3>Options</h3>
       <div class="auto-cashout-row">
-        <label>Cashout at</label>
+        <label>Cashout</label>
         <input type="number" class="auto-cashout-input" id="autoCashout" value="" placeholder="OFF" min="1.01" step="0.01">
-        <span style="font-size:11px; color: var(--text-muted)">×</span>
+        <span style="font-size:12px; color: var(--text-muted)">×</span>
       </div>
       <div style="display:flex; gap:16px; margin-top:8px;">
         <div class="autobet-toggle">
@@ -2200,12 +2200,12 @@ function checkEvents() {
         DOM.statEvents.textContent = 'Golden Rocket';
         renderer.eventMarkers.push({ tick: State.currentTick, type: 'golden_rocket', label: '🚀' });
         renderer.isGolden = true;
-        // Spawn collectible coins
-        for (let i = 0; i < 4; i++) {
+        // Spawn collectible diamonds
+        for (let i = 0; i < 6; i++) {
           renderer.collectibles.push({
-            x: renderer.rocketX + (Math.random()-0.5) * 160,
-            y: renderer.rocketY - 30 - Math.random() * 80,
-            size: 12, alpha: 1, phase: Math.random() * Math.PI * 2
+            x: renderer.rocketX + (Math.random()-0.5) * 120,
+            y: renderer.rocketY - 20 - Math.random() * 60,
+            size: 16 + Math.random() * 8, alpha: 1, phase: Math.random() * Math.PI * 2
           });
         }
         renderer.addExplosion(renderer.rocketX, renderer.rocketY, 'rgba(255,215,0,1)', 25);
@@ -2215,7 +2215,7 @@ function checkEvents() {
 
   // Fade obstacles/collectibles
   renderer.obstacles.forEach(o => { o.alpha = Math.max(0, o.alpha - 0.005); });
-  renderer.collectibles.forEach(c => { c.alpha = Math.max(0, c.alpha - 0.008); });
+  renderer.collectibles.forEach(c => { c.alpha = Math.max(0, c.alpha - 0.004); });
 }
 
 function cashOut() {
