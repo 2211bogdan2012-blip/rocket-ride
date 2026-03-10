@@ -1180,6 +1180,16 @@ class GameRenderer {
     // Particles
     this._renderParticles(ctx);
 
+    // #8: HypeGames watermark
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+    ctx.font = 'bold 11px Orbitron';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('HypeGames', this.w - 12, this.h - 8);
+    ctx.restore();
+
     ctx.restore();
   }
 
@@ -1699,6 +1709,7 @@ const State = {
   
   // Auto
   autoBet: false,
+  turbo: false,
   autoCashout: null,
   
   // History
@@ -1924,6 +1935,18 @@ function toggleAutoBet() {
   document.getElementById('autoBetToggle').classList.toggle('active', State.autoBet);
 }
 
+function setBetPreset(amount) {
+  State.betAmount = amount;
+  DOM.betInput.value = amount;
+  updateActionButton();
+  updateStats();
+}
+
+function toggleTurbo() {
+  State.turbo = !State.turbo;
+  document.getElementById('turboToggle').classList.toggle('active', State.turbo);
+}
+
 // Bet input listener
 DOM.betInput.addEventListener('change', () => {
   State.betAmount = Math.max(1, parseInt(DOM.betInput.value) || 1);
@@ -2003,7 +2026,7 @@ function startRound() {
   DOM.statEvents.textContent = '—';
 
   // Countdown
-  let countdown = CONFIG.COUNTDOWN_SEC;
+  let countdown = State.turbo ? 1 : CONFIG.COUNTDOWN_SEC;
   DOM.multiplier.textContent = countdown + '...';
   DOM.multiplierLabel.textContent = 'LAUNCHING IN';
   DOM.multiplierOverlay.classList.add('centered');
@@ -2064,9 +2087,10 @@ function gameTick() {
   updateMultiplier();
   updateActionButton();
 
-  // Tick sound at milestones
+  // Tick sound at milestones — pitch scales with multiplier (#5)
   if (Math.floor(State.currentMultiplier * 10) !== Math.floor(MathEngine.tickToMultiplier(State.currentTick - 1) * 10)) {
-    sound.play('tick');
+    const pitchMult = 1 + Math.min(State.currentMultiplier * 0.05, 1.5);
+    sound.play('tick', { pitch: pitchMult });
   }
 }
 
