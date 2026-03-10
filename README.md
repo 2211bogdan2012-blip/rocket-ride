@@ -1,20 +1,16 @@
-# 🚀 Rocket Launch
+# 🚀 Rocket Ride
 
 **Standalone crash casino game in a single HTML file.** Zero dependencies, opens in any browser.
 
-<p align="center">
-  <strong>Stake-style dark UI • 96% RTP • 5 game mechanics • Canvas 2D rendering</strong>
-</p>
+**Stake-style dark UI • 96% RTP • 5 game mechanics • Canvas 2D rendering**
 
 ## Play
 
 ```bash
 open index.html
-# or
-python3 -m http.server 3001
 ```
 
-## Game Mechanics
+## Mechanics
 
 🎰 **Base Crash** (52%) — Multiplier grows, cash out before it crashes  
 ⚔️ **Mini-Boss** (11.7%) — Enemy spawns, 1.2×–2.5× bonus  
@@ -33,13 +29,11 @@ python3 -m http.server 3001
 
 ## Controls
 
-- **Space** — Bet / Cash out
-- Auto-cashout at target multiplier
-- Auto-bet for continuous play
+**Space** — Bet / Cash out • Auto-cashout • Auto-bet
 
 ## Tech
 
-Single HTML file (~1200 lines): Canvas 2D, Web Audio synthesis, CSS Grid, Google Fonts (Orbitron + JetBrains Mono). Provably fair math: `crashPoint = 0.96 / random()` → **96% RTP**.
+Single HTML (~1200 lines). Canvas 2D, Web Audio, CSS Grid, Orbitron + JetBrains Mono. Math: `0.96 / random()` → **96% RTP**.
 
 ---
 
