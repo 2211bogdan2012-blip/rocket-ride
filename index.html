@@ -111,9 +111,9 @@ canvas#gameCanvas {
 /* ═══════════ MULTIPLIER OVERLAY ═══════════ */
 .multiplier-overlay {
   position: absolute;
-  top: 24px;
-  left: 80px;
-  text-align: left;
+  top: 20px;
+  right: 24px;
+  text-align: right;
   pointer-events: none;
   z-index: 5;
 }
@@ -121,6 +121,7 @@ canvas#gameCanvas {
 .multiplier-overlay.centered {
   top: 50%;
   left: 50%;
+  right: auto;
   transform: translate(-50%, -50%);
   text-align: center;
 }
@@ -1043,7 +1044,6 @@ class GameRenderer {
     this.ctx = canvas.getContext('2d');
     this.stars = [];
     this.particles = [];
-    this.trailPoints = [];
     this.graphPoints = [];
     this.rocketX = 0;
     this.rocketY = 0;
@@ -1293,25 +1293,6 @@ class GameRenderer {
     ctx.restore();
   }
 
-  _renderTrail(ctx) {
-    if (this.trailPoints.length < 2) return;
-    
-    for (let w = 3; w >= 1; w--) {
-      ctx.beginPath();
-      ctx.moveTo(this.trailPoints[0].x, this.trailPoints[0].y);
-      for (let i = 1; i < this.trailPoints.length; i++) {
-        const p = this.trailPoints[i];
-        ctx.lineTo(p.x, p.y);
-      }
-      const alpha = (4 - w) / 4;
-      ctx.strokeStyle = this.isGolden
-        ? `rgba(255, 215, 0, ${alpha * 0.4})`
-        : `rgba(0, 231, 1, ${alpha * 0.3})`;
-      ctx.lineWidth = w * 3;
-      ctx.stroke();
-    }
-  }
-
   _renderRocket(ctx) {
     const x = this.rocketX;
     const y = this.rocketY;
@@ -1521,15 +1502,27 @@ class GameRenderer {
 
   addTrailParticle(x, y) {
     const mult = window._currentMult || 1;
-    const speed = 1 + Math.min(mult * 0.3, 3);
+    const speed = 1.5 + Math.min(mult * 0.4, 4);
+    const size = 22;
+    const angle = this.rocketAngle || 0;
+    
+    // Tail position in world coords: local (0, +size) rotated by angle
+    const tailX = x - Math.sin(angle) * size * 1.3;
+    const tailY = y + Math.cos(angle) * size * 1.3;
+    
+    // Exhaust direction: opposite of nose, with spread
+    const spread = (Math.random() - 0.5) * 0.5;
+    const exAngle = angle + Math.PI + spread; // opposite of nose direction in local-to-world
+    const vx = Math.sin(exAngle) * speed * (0.5 + Math.random());
+    const vy = -Math.cos(exAngle) * speed * (0.5 + Math.random());
+    
     this.particles.push({
-      x: x + (Math.random() - 0.5) * 8,
-      y: y + 10,
-      vx: -(Math.random() * speed + 1),
-      vy: Math.random() * speed * 0.5 + 0.5,
-      r: Math.random() * 3 + 1,
+      x: tailX + (Math.random() - 0.5) * 4,
+      y: tailY + (Math.random() - 0.5) * 4,
+      vx, vy,
+      r: Math.random() * 3 + 1.5,
       life: 1,
-      decay: 0.03,
+      decay: 0.025 + Math.random() * 0.015,
       color: this.isGolden ? 'rgba(255,215,0,1)' : 'rgba(255,165,0,1)',
     });
   }
@@ -1843,7 +1836,6 @@ function startRound() {
   State.phase = 'countdown';
 
   // Reset renderer
-  renderer.trailPoints = [];
   renderer.graphPoints = [];
   renderer.obstacles = [];
   renderer.collectibles = [];
@@ -1896,8 +1888,9 @@ function gameTick() {
   // Graph data
   renderer.graphPoints.push({ mult: State.currentMultiplier });
 
-  // Engine particles at rocket position (set by _renderGraph)
-  if (State.currentTick % 3 === 0) {
+  // Engine exhaust particles from rocket tail
+  if (State.currentTick % 2 === 0) {
+    renderer.addTrailParticle(renderer.rocketX, renderer.rocketY);
     renderer.addTrailParticle(renderer.rocketX, renderer.rocketY);
   }
 
