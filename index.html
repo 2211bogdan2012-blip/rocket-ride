@@ -41,7 +41,7 @@ body {
 /* ═══════════ LAYOUT ═══════════ */
 .game-container {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr 280px;
   grid-template-rows: auto 1fr auto;
   height: 100vh;
   gap: 0;
@@ -274,44 +274,43 @@ canvas#gameCanvas {
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  gap: 12px;
+  padding: 12px;
+  gap: 8px;
   overflow-y: auto;
 }
 
 .sidebar-section {
   background: var(--bg-card);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 10px;
+  padding: 12px;
   border: 1px solid var(--border-color);
 }
 
 .sidebar-section h3 {
   font-family: 'Orbitron', sans-serif;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 2px;
   color: var(--text-muted);
   text-transform: uppercase;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 /* ═══════════ BET MODE SELECTOR ═══════════ */
 .mode-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
 }
 
 .mode-tab {
-  padding: 8px 4px;
-  border-radius: 8px;
+  padding: 7px 2px;
+  border-radius: 6px;
   border: 1px solid var(--border-color);
   background: transparent;
   color: var(--text-secondary);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
@@ -329,23 +328,11 @@ canvas#gameCanvas {
   color: var(--accent-green);
 }
 
-.mode-tab .cost {
-  display: block;
-  font-size: 10px;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-
-.mode-tab.active .cost {
-  color: #00e70199;
-}
-
 /* ═══════════ BET AMOUNT ═══════════ */
 .bet-input-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: 4px;
 }
 
 .bet-input {
@@ -353,10 +340,10 @@ canvas#gameCanvas {
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   color: var(--text-primary);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   outline: none;
   transition: border-color 0.2s;
@@ -384,30 +371,6 @@ canvas#gameCanvas {
   border-color: var(--border-active);
   color: var(--text-primary);
 }
-
-/* ═══════════ BET PRESETS ═══════════ */
-.bet-presets {
-  display: flex;
-  gap: 4px;
-  margin-top: 8px;
-}
-
-.bet-preset {
-  flex: 1;
-  padding: 6px 2px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-  background: transparent;
-  color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.bet-preset:hover { background: var(--bg-card-hover); color: var(--text-secondary); }
-.bet-preset.active { background: var(--accent-green-dim); border-color: var(--accent-green); color: var(--accent-green); }
 
 /* ═══════════ PLAY / CASHOUT BUTTON ═══════════ */
 .action-btn {
@@ -769,77 +732,63 @@ canvas#gameCanvas {
 
   <!-- SIDEBAR -->
   <div class="sidebar">
-    <!-- BET MODE -->
+    <!-- MODE + BET (combined) -->
     <div class="sidebar-section">
-      <h3>Bet Mode</h3>
+      <h3>Bet</h3>
       <div class="mode-tabs" id="modeTabs">
-        <button class="mode-tab active" data-mode="base">Base<span class="cost">1× bet</span></button>
-        <button class="mode-tab" data-mode="business_class">Business<span class="cost">10× bet</span></button>
-        <button class="mode-tab" data-mode="vip_executive">VIP<span class="cost">25× bet</span></button>
-        <button class="mode-tab" data-mode="ceo_mode">CEO<span class="cost">100× bet</span></button>
+        <button class="mode-tab active" data-mode="base">1×</button>
+        <button class="mode-tab" data-mode="business_class">10×</button>
+        <button class="mode-tab" data-mode="vip_executive">25×</button>
+        <button class="mode-tab" data-mode="ceo_mode">100×</button>
       </div>
-    </div>
-
-    <!-- BET AMOUNT -->
-    <div class="sidebar-section">
-      <h3>Bet Amount</h3>
-      <div class="bet-input-row">
+      <div class="bet-input-row" style="margin-top:8px;">
         <input type="number" class="bet-input" id="betInput" value="10" min="1" step="1">
-        <button class="bet-btn" onclick="setBetMax()">MAX</button>
       </div>
-      <div class="bet-input-row" style="margin-top:6px;">
+      <div class="bet-input-row" style="margin-top:4px;">
         <button class="bet-btn" onclick="setBetPreset(1)">$1</button>
         <button class="bet-btn" onclick="setBetPreset(5)">$5</button>
         <button class="bet-btn" onclick="setBetPreset(10)">$10</button>
         <button class="bet-btn" onclick="setBetPreset(50)">$50</button>
-        <button class="bet-btn" onclick="setBetPreset(100)">$100</button>
-      </div>
-      <div class="bet-presets" id="betPresets">
-        <button class="bet-preset" onclick="setBetAmount(1)">$1</button>
-        <button class="bet-preset" onclick="setBetAmount(5)">$5</button>
-        <button class="bet-preset active" onclick="setBetAmount(10)">$10</button>
-        <button class="bet-preset" onclick="setBetAmount(50)">$50</button>
-        <button class="bet-preset" onclick="setBetAmount(100)">$100</button>
-      </div>
-
-      <div class="auto-cashout-row">
-        <label>Auto cashout:</label>
-        <input type="number" class="auto-cashout-input" id="autoCashout" value="" placeholder="OFF" min="1.01" step="0.01">
-        <span style="font-size:11px; color: var(--text-muted)">×</span>
-      </div>
-
-      <div class="autobet-toggle">
-        <div class="toggle-switch" id="autoBetToggle" onclick="toggleAutoBet()">
-          <div class="toggle-knob"></div>
-        </div>
-        <span>Auto-bet</span>
-      </div>
-
-      <div class="autobet-toggle" style="margin-top:4px;">
-        <div class="toggle-switch" id="turboToggle" onclick="toggleTurbo()">
-          <div class="toggle-knob"></div>
-        </div>
-        <span>Turbo ⚡</span>
+        <button class="bet-btn" onclick="setBetMax()">MAX</button>
       </div>
     </div>
 
     <!-- ACTION -->
-    <div class="sidebar-section" style="padding: 12px 16px;">
+    <div class="sidebar-section" style="padding: 10px 16px;">
       <button class="action-btn bet" id="actionBtn" onclick="handleAction()">
         BET
         <span class="sub-text" id="actionSub">$10.00</span>
       </button>
     </div>
 
-    <!-- STATS -->
+    <!-- OPTIONS (one compact section) -->
     <div class="sidebar-section">
-      <h3>Round Stats</h3>
-      <div class="stat-row">
-        <span class="stat-label">Bet Mode</span>
-        <span class="stat-value" id="statMode">Base (1×)</span>
+      <h3>Options</h3>
+      <div class="auto-cashout-row">
+        <label>Cashout at</label>
+        <input type="number" class="auto-cashout-input" id="autoCashout" value="" placeholder="OFF" min="1.01" step="0.01">
+        <span style="font-size:11px; color: var(--text-muted)">×</span>
       </div>
+      <div style="display:flex; gap:16px; margin-top:8px;">
+        <div class="autobet-toggle">
+          <div class="toggle-switch" id="autoBetToggle" onclick="toggleAutoBet()">
+            <div class="toggle-knob"></div>
+          </div>
+          <span>Auto</span>
+        </div>
+        <div class="autobet-toggle">
+          <div class="toggle-switch" id="turboToggle" onclick="toggleTurbo()">
+            <div class="toggle-knob"></div>
+          </div>
+          <span>Turbo</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS (minimal) -->
+    <div class="sidebar-section">
       <div class="stat-row">
-        <span class="stat-label">Total Cost</span>
+        <span class="stat-label">Cost</span>
         <span class="stat-value" id="statCost">$10.00</span>
       </div>
       <div class="stat-row">
@@ -851,11 +800,11 @@ canvas#gameCanvas {
         <span class="stat-value" id="statEvents">—</span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">Session P/L</span>
+        <span class="stat-label">P/L</span>
         <span class="stat-value" id="statPL" style="color: var(--text-primary)">$0.00</span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">Rounds Played</span>
+        <span class="stat-label">Rounds</span>
         <span class="stat-value" id="statRounds">0</span>
       </div>
     </div>
@@ -1531,6 +1480,7 @@ class GameRenderer {
   }
 
   _renderObstacles(ctx) {
+    const t = Date.now() / 1000;
     this.obstacles.forEach(o => {
       if (o.alpha <= 0) return;
       ctx.save();
@@ -1538,70 +1488,191 @@ class GameRenderer {
       ctx.translate(o.x, o.y);
       
       if (o.type === 'debris') {
-        // Asteroid-like debris
-        ctx.fillStyle = '#78716c';
+        // Meteor with crater, glow trail, rotation
+        const rot = t * 2 + (o.size * 0.7);
+        ctx.rotate(rot);
+        // Outer glow
+        const glow = ctx.createRadialGradient(0, 0, o.size * 0.5, 0, 0, o.size * 2);
+        glow.addColorStop(0, 'rgba(249,115,22,0.3)');
+        glow.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(-o.size*2, -o.size*2, o.size*4, o.size*4);
+        // Rocky body
+        ctx.fillStyle = '#57534e';
         ctx.beginPath();
-        const pts = o.points || 6;
+        const pts = o.points || 7;
         for (let i = 0; i < pts; i++) {
           const ang = (i / pts) * Math.PI * 2;
-          const r = o.size * (0.7 + Math.sin(i * 2.3) * 0.3);
+          const r = o.size * (0.6 + Math.sin(i * 3.7) * 0.35);
           if (i === 0) ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
           else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
         }
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = '#a8a29e';
-        ctx.lineWidth = 1;
+        // Surface detail
+        ctx.fillStyle = '#44403c';
+        ctx.beginPath();
+        ctx.arc(o.size * 0.15, -o.size * 0.1, o.size * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(-o.size * 0.2, o.size * 0.15, o.size * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        // Highlight edge
+        ctx.strokeStyle = '#78716c';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, o.size * 0.55, -0.8, 0.8);
         ctx.stroke();
-      } else if (o.type === 'boss') {
-        // Boss icon (skull-like)
-        ctx.fillStyle = o.isRage ? '#ef4444' : '#a855f7';
+        
+      } else if (o.type === 'boss' && !o.isRage) {
+        // Mini-boss: UFO saucer with dome and spinning lights
+        const hover = Math.sin(t * 3) * 3;
+        ctx.translate(0, hover);
+        // Beam glow
+        ctx.fillStyle = 'rgba(168,85,247,0.08)';
         ctx.beginPath();
-        ctx.arc(0, 0, o.size, 0, Math.PI * 2);
+        ctx.moveTo(-o.size * 0.6, 0);
+        ctx.lineTo(-o.size * 1.2, o.size * 2);
+        ctx.lineTo(o.size * 1.2, o.size * 2);
+        ctx.lineTo(o.size * 0.6, 0);
         ctx.fill();
-        // Eyes
-        ctx.fillStyle = '#fff';
+        // Saucer body
+        ctx.fillStyle = '#6b21a8';
         ctx.beginPath();
-        ctx.arc(-o.size * 0.3, -o.size * 0.15, o.size * 0.2, 0, Math.PI * 2);
-        ctx.arc(o.size * 0.3, -o.size * 0.15, o.size * 0.2, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, o.size * 1.1, o.size * 0.35, 0, 0, Math.PI * 2);
         ctx.fill();
-        // Mouth
-        ctx.strokeStyle = '#fff';
+        // Metallic rim
+        ctx.strokeStyle = '#a855f7';
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, o.size * 0.2, o.size * 0.3, 0, Math.PI);
         ctx.stroke();
+        // Dome
+        ctx.fillStyle = '#7c3aed';
+        ctx.beginPath();
+        ctx.ellipse(0, -o.size * 0.15, o.size * 0.5, o.size * 0.45, 0, Math.PI, 0);
+        ctx.fill();
+        // Dome window
+        ctx.fillStyle = '#c4b5fd';
+        ctx.globalAlpha = o.alpha * 0.7;
+        ctx.beginPath();
+        ctx.ellipse(0, -o.size * 0.25, o.size * 0.25, o.size * 0.2, 0, Math.PI, 0);
+        ctx.fill();
+        ctx.globalAlpha = o.alpha;
+        // Spinning lights
+        for (let i = 0; i < 4; i++) {
+          const la = t * 4 + i * Math.PI / 2;
+          const lx = Math.cos(la) * o.size * 0.85;
+          const ly = Math.sin(la) * o.size * 0.2;
+          ctx.beginPath();
+          ctx.arc(lx, ly, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = i % 2 === 0 ? '#e879f9' : '#f0abfc';
+          ctx.fill();
+        }
+        
+      } else if (o.type === 'boss' && o.isRage) {
+        // Boss Rage: flaming skull with horns
+        const pulse = 1 + Math.sin(t * 6) * 0.08;
+        ctx.scale(pulse, pulse);
+        // Fire aura
+        const fireGrad = ctx.createRadialGradient(0, 0, o.size * 0.3, 0, 0, o.size * 1.8);
+        fireGrad.addColorStop(0, 'rgba(239,68,68,0.4)');
+        fireGrad.addColorStop(0.5, 'rgba(249,115,22,0.15)');
+        fireGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = fireGrad;
+        ctx.fillRect(-o.size*2, -o.size*2, o.size*4, o.size*4);
+        // Skull
+        ctx.fillStyle = '#1c1917';
+        ctx.beginPath();
+        ctx.arc(0, 0, o.size * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#292524';
+        ctx.beginPath();
+        ctx.ellipse(0, o.size * 0.15, o.size * 0.5, o.size * 0.35, 0, 0, Math.PI);
+        ctx.fill();
+        // Horns
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.moveTo(-o.size * 0.5, -o.size * 0.4);
+        ctx.quadraticCurveTo(-o.size * 0.9, -o.size * 1.3, -o.size * 0.3, -o.size * 0.8);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(o.size * 0.5, -o.size * 0.4);
+        ctx.quadraticCurveTo(o.size * 0.9, -o.size * 1.3, o.size * 0.3, -o.size * 0.8);
+        ctx.fill();
+        // Eyes — glowing red
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.ellipse(-o.size * 0.22, -o.size * 0.1, o.size * 0.14, o.size * 0.1, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(o.size * 0.22, -o.size * 0.1, o.size * 0.14, o.size * 0.1, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        // Nose
+        ctx.fillStyle = '#1c1917';
+        ctx.beginPath();
+        ctx.moveTo(-o.size * 0.06, o.size * 0.05);
+        ctx.lineTo(o.size * 0.06, o.size * 0.05);
+        ctx.lineTo(0, o.size * 0.15);
+        ctx.fill();
+        // Teeth
+        ctx.fillStyle = '#d6d3d1';
+        for (let i = -2; i <= 2; i++) {
+          ctx.fillRect(i * o.size * 0.12 - o.size * 0.04, o.size * 0.25, o.size * 0.08, o.size * 0.12);
+        }
       }
       ctx.restore();
     });
   }
 
   _renderCollectibles(ctx) {
+    const t = Date.now() / 1000;
     this.collectibles.forEach(c => {
       if (c.alpha <= 0) return;
       ctx.save();
       ctx.globalAlpha = c.alpha;
       ctx.translate(c.x, c.y);
 
-      // Golden coin
-      const t = Date.now() / 500;
-      const scaleX = Math.abs(Math.cos(t + c.phase));
-      ctx.scale(scaleX || 0.1, 1);
+      // Sparkle glow
+      const glowSize = c.size * (1.5 + Math.sin(t * 4 + c.phase) * 0.3);
+      const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, glowSize);
+      glow.addColorStop(0, 'rgba(255,215,0,0.4)');
+      glow.addColorStop(1, 'rgba(255,215,0,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(-glowSize, -glowSize, glowSize*2, glowSize*2);
 
-      ctx.fillStyle = '#ffd700';
+      // Diamond shape (rotated square)
+      const rot = t * 2 + c.phase;
+      ctx.rotate(rot);
+      const s = c.size * 0.8;
       ctx.beginPath();
-      ctx.arc(0, 0, c.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#b8860b';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      // $ symbol
-      ctx.fillStyle = '#b8860b';
-      ctx.font = `bold ${c.size}px Orbitron`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('$', 0, 1);
+      ctx.moveTo(0, -s);
+      ctx.lineTo(s * 0.7, 0);
+      ctx.lineTo(0, s);
+      ctx.lineTo(-s * 0.7, 0);
+      ctx.closePath();
       
+      const dGrad = ctx.createLinearGradient(-s, -s, s, s);
+      dGrad.addColorStop(0, '#ffd700');
+      dGrad.addColorStop(0.5, '#fff8dc');
+      dGrad.addColorStop(1, '#b8860b');
+      ctx.fillStyle = dGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#fff8dc';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Inner shine
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 0.5);
+      ctx.lineTo(s * 0.2, 0);
+      ctx.lineTo(0, s * 0.2);
+      ctx.lineTo(-s * 0.2, 0);
+      ctx.closePath();
+      ctx.fill();
+
       ctx.restore();
     });
   }
@@ -1738,7 +1809,6 @@ const DOM = {
   historyBar: document.getElementById('historyBar'),
   winPopup: document.getElementById('winPopup'),
   winAmount: document.getElementById('winAmount'),
-  statMode: document.getElementById('statMode'),
   statCost: document.getElementById('statCost'),
   statWinCap: document.getElementById('statWinCap'),
   statEvents: document.getElementById('statEvents'),
@@ -1815,7 +1885,6 @@ function updateActionButton() {
 function updateStats() {
   const modeCfg = CONFIG.MODES[State.mode];
   const totalCost = State.betAmount * modeCfg.multiplier;
-  DOM.statMode.textContent = modeCfg.label;
   DOM.statCost.textContent = '$' + totalCost.toLocaleString();
   DOM.statWinCap.textContent = '$' + modeCfg.winCap.toLocaleString();
   DOM.statRounds.textContent = State.roundsPlayed;
@@ -1898,41 +1967,12 @@ function showNextRoundTimer(seconds) {
 }
 
 // ──────────── BET CONTROLS ────────────
-function setBetMultiple(mult) {
-  State.betAmount = Math.max(1, Math.round(State.betAmount * mult));
-  DOM.betInput.value = State.betAmount;
-  updatePresetHighlight();
-  updateActionButton();
-  updateStats();
-}
-
 function setBetMax() {
   const modeCfg = CONFIG.MODES[State.mode];
   State.betAmount = Math.floor(State.balance / modeCfg.multiplier);
   DOM.betInput.value = State.betAmount;
-  updatePresetHighlight();
   updateActionButton();
   updateStats();
-}
-
-function setBetAmount(amount) {
-  State.betAmount = amount;
-  DOM.betInput.value = amount;
-  updatePresetHighlight();
-  updateActionButton();
-  updateStats();
-}
-
-function updatePresetHighlight() {
-  document.querySelectorAll('.bet-preset').forEach(btn => {
-    const val = parseInt(btn.textContent.replace('$', ''));
-    btn.classList.toggle('active', val === State.betAmount);
-  });
-}
-
-function toggleAutoBet() {
-  State.autoBet = !State.autoBet;
-  document.getElementById('autoBetToggle').classList.toggle('active', State.autoBet);
 }
 
 function setBetPreset(amount) {
@@ -1940,6 +1980,11 @@ function setBetPreset(amount) {
   DOM.betInput.value = amount;
   updateActionButton();
   updateStats();
+}
+
+function toggleAutoBet() {
+  State.autoBet = !State.autoBet;
+  document.getElementById('autoBetToggle').classList.toggle('active', State.autoBet);
 }
 
 function toggleTurbo() {
@@ -1951,7 +1996,6 @@ function toggleTurbo() {
 DOM.betInput.addEventListener('change', () => {
   State.betAmount = Math.max(1, parseInt(DOM.betInput.value) || 1);
   DOM.betInput.value = State.betAmount;
-  updatePresetHighlight();
   updateActionButton();
   updateStats();
 });
