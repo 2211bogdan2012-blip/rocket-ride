@@ -412,6 +412,63 @@ canvas#gameCanvas {
   color: var(--text-primary);
 }
 
+/* ═══════════ TRIPLE LAUNCH — ROCKET COUNT + PANEL ═══════════ */
+.rocket-count-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.rocket-count-btn.active {
+  background: var(--accent-green-dim);
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+}
+
+.split-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  min-height: 14px;
+}
+
+.rocket-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid #1e293b44;
+}
+
+.rocket-row:last-child { border-bottom: none; }
+
+.rocket-label {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.rocket-status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  flex: 1;
+  text-align: center;
+}
+
+.rocket-cashout-btn {
+  font-size: 10px;
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+.rocket-cashout-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ═══════════ PLAY / CASHOUT BUTTON ═══════════ */
 .action-btn {
   width: 100%;
@@ -926,6 +983,12 @@ canvas#gameCanvas {
         <button class="bet-btn" onclick="setBetPreset(50)">$50</button>
         <button class="bet-btn" onclick="setBetMax()">MAX</button>
       </div>
+      <div class="rocket-count-row" id="rocketCountRow">
+        <button class="bet-btn rocket-count-btn active" data-count="1">1 🚀</button>
+        <button class="bet-btn rocket-count-btn" data-count="2">2 🚀</button>
+        <button class="bet-btn rocket-count-btn" data-count="3">3 🚀</button>
+      </div>
+      <div class="split-hint" id="splitHint"></div>
     </div>
 
     <!-- ACTION -->
@@ -934,6 +997,12 @@ canvas#gameCanvas {
         BET
         <span class="sub-text" id="actionSub">$10.00</span>
       </button>
+    </div>
+
+    <!-- TRIPLE LAUNCH — PER-ROCKET PANEL (shown when rocket count > 1) -->
+    <div class="sidebar-section" id="rocketsPanel" style="display:none;">
+      <h3>Rockets</h3>
+      <div id="rocketsList"></div>
     </div>
 
     <!-- OPTIONS (one compact section) -->
@@ -1055,6 +1124,10 @@ const CONFIG = {
   },
 
   COUNTDOWN_SEC: 3,
+
+  // Triple Launch — visual identity per rocket lane (skeleton, no math impact)
+  ROCKET_COLORS: ['#3b82f6', '#f97316', '#a855f7'],
+  ROCKET_LABELS: ['A', 'B', 'C'],
 };
 
 // ──────────── MATH ENGINE ────────────
@@ -1312,7 +1385,9 @@ class GameRenderer {
     if (state === 'flying' || state === 'crashed' || state === 'cashed_out') {
       this._renderObstacles(ctx);
       this._renderCollectibles(ctx);
-      if (state !== 'crashed') {
+      if (State.rocketCount > 1) {
+        this._renderMultiRockets(ctx);
+      } else if (state !== 'crashed') {
         this._renderRocket(ctx);
       }
     }
@@ -1723,6 +1798,58 @@ class GameRenderer {
     ctx.restore();
   }
 
+  // Triple Launch — lightweight colored rocket per lane, drawn at the shared
+  // curve position (same growth curve for all rockets; only crash tick differs)
+  _renderMultiRockets(ctx) {
+    const rockets = State.rockets || [];
+    const n = rockets.length;
+    if (!n) return;
+    const spacing = 26;
+    const size = 15;
+
+    rockets.forEach((r, idx) => {
+      if (r.phase !== 'flying') return; // crashed/cashed rockets already exploded — icon removed
+      const dx = (idx - (n - 1) / 2) * spacing;
+      const x = this.rocketX + dx;
+      const y = this.rocketY;
+      const color = CONFIG.ROCKET_COLORS[idx] || '#3b82f6';
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(this.rocketAngle);
+
+      // Flame
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.25, size * 0.7);
+      ctx.lineTo(0, size * 1.3);
+      ctx.lineTo(size * 0.25, size * 0.7);
+      ctx.closePath();
+      ctx.fillStyle = '#fbbf24';
+      ctx.fill();
+
+      // Body
+      ctx.beginPath();
+      ctx.moveTo(0, -size);
+      ctx.lineTo(size * 0.6, size * 0.7);
+      ctx.lineTo(-size * 0.6, size * 0.7);
+      ctx.closePath();
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+
+      // Lane label
+      ctx.save();
+      ctx.font = 'bold 10px JetBrains Mono';
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      ctx.fillText(CONFIG.ROCKET_LABELS[idx] || '', x, y - size - 6);
+      ctx.restore();
+    });
+  }
+
   _renderObstacles(ctx) {
     const t = Date.now() / 1000;
     this.obstacles.forEach(o => {
@@ -2032,6 +2159,10 @@ const State = {
   // Timer refs
   tickInterval: null,
   countdownTimer: null,
+
+  // Triple Launch — 1-3 rockets, independent rounds on the same crash engine
+  rocketCount: 1,
+  rockets: [], // used only when rocketCount > 1: [{betAmount, round, phase, cashedOutAt}]
 };
 
 // ──────────── DOM REFS ────────────
@@ -2058,6 +2189,9 @@ const DOM = {
   nextRoundTimer: document.getElementById('nextRoundTimer'),
   soundToggle: document.getElementById('soundToggle'),
   seedDisplay: document.getElementById('seedDisplay'),
+  rocketsPanel: document.getElementById('rocketsPanel'),
+  rocketsList: document.getElementById('rocketsList'),
+  splitHint: document.getElementById('splitHint'),
 };
 
 // ──────────── INSTANCES ────────────
@@ -2082,6 +2216,9 @@ function updateMultiplier() {
     el.classList.add('cashed-out');
     DOM.multiplierOverlay.classList.add('centered');
     DOM.multiplierLabel.textContent = 'CASHED OUT';
+  } else if (State.phase === 'resolved') {
+    DOM.multiplierOverlay.classList.add('centered');
+    DOM.multiplierLabel.textContent = 'ROUND COMPLETE';
   } else if (State.phase === 'flying') {
     DOM.multiplierOverlay.classList.remove('centered');
     DOM.multiplierLabel.textContent = '';
@@ -2100,9 +2237,9 @@ function updateActionButton() {
   const modeCfg = CONFIG.MODES[State.mode];
   const totalCost = State.betAmount * modeCfg.multiplier;
 
-  if (State.phase === 'idle' || State.phase === 'crashed' || State.phase === 'cashed_out') {
+  if (State.phase === 'idle' || State.phase === 'crashed' || State.phase === 'cashed_out' || State.phase === 'resolved') {
     btn.className = 'action-btn bet';
-    btn.textContent = 'BET';
+    btn.textContent = State.rocketCount > 1 ? 'LAUNCH ALL' : 'BET';
     sub.textContent = `$${totalCost.toFixed(2)}`;
     btn.appendChild(sub);
     if (totalCost > State.balance) {
@@ -2114,11 +2251,18 @@ function updateActionButton() {
     sub.textContent = '';
     btn.appendChild(sub);
   } else if (State.phase === 'flying') {
-    btn.className = 'action-btn cashout';
-    const potentialWin = State.betAmount * modeCfg.multiplier * State.currentMultiplier;
-    btn.textContent = 'CASH OUT';
-    sub.textContent = `$${potentialWin.toFixed(2)}`;
-    btn.appendChild(sub);
+    if (State.rocketCount > 1) {
+      btn.className = 'action-btn disabled';
+      btn.textContent = 'IN FLIGHT';
+      sub.textContent = 'Cash out each rocket below';
+      btn.appendChild(sub);
+    } else {
+      btn.className = 'action-btn cashout';
+      const potentialWin = State.betAmount * modeCfg.multiplier * State.currentMultiplier;
+      btn.textContent = 'CASH OUT';
+      sub.textContent = `$${potentialWin.toFixed(2)}`;
+      btn.appendChild(sub);
+    }
   }
 }
 
@@ -2266,6 +2410,7 @@ function setBetMax() {
   DOM.betInput.value = State.betAmount;
   updateActionButton();
   updateStats();
+  updateSplitHint();
 }
 
 function setBetPreset(amount) {
@@ -2273,6 +2418,84 @@ function setBetPreset(amount) {
   DOM.betInput.value = amount;
   updateActionButton();
   updateStats();
+  updateSplitHint();
+}
+
+// ──────────── TRIPLE LAUNCH — ROCKET COUNT (1-3) ────────────
+function setRocketCount(n) {
+  // Lock the selector mid-round, same rule as mode tabs
+  if (State.phase === 'flying' || State.phase === 'countdown' || State.phase === 'launching') return;
+  State.rocketCount = n;
+  document.querySelectorAll('.rocket-count-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.count, 10) === n);
+  });
+  if (n <= 1) State.rockets = [];
+  updateSplitHint();
+  updateActionButton();
+  renderRocketsPanel();
+}
+
+function updateSplitHint() {
+  if (!DOM.splitHint) return;
+  if (State.rocketCount <= 1) { DOM.splitHint.textContent = ''; return; }
+  const modeCfg = CONFIG.MODES[State.mode];
+  const totalCost = State.betAmount * modeCfg.multiplier;
+  const per = totalCost / State.rocketCount;
+  DOM.splitHint.textContent = `Split ${State.rocketCount}× — $${per.toFixed(2)} per rocket`;
+}
+
+document.querySelectorAll('.rocket-count-btn').forEach(btn => {
+  btn.addEventListener('click', () => setRocketCount(parseInt(btn.dataset.count, 10)));
+});
+
+// Per-rocket panel — built when a multi-rocket round starts, hidden otherwise
+function renderRocketsPanel() {
+  if (State.rocketCount <= 1) {
+    DOM.rocketsPanel.style.display = 'none';
+    DOM.rocketsList.innerHTML = '';
+    return;
+  }
+  DOM.rocketsPanel.style.display = 'block';
+  DOM.rocketsList.innerHTML = '';
+  State.rockets.forEach((r, idx) => {
+    const row = document.createElement('div');
+    row.className = 'rocket-row';
+    row.innerHTML = `
+      <span class="rocket-label" style="color:${CONFIG.ROCKET_COLORS[idx]}">${CONFIG.ROCKET_LABELS[idx]}</span>
+      <span class="rocket-status" id="rocketStatus${idx}">1.00×</span>
+      <button class="bet-btn rocket-cashout-btn" id="rocketCashout${idx}" data-idx="${idx}">CASH OUT</button>
+    `;
+    DOM.rocketsList.appendChild(row);
+  });
+  DOM.rocketsList.querySelectorAll('.rocket-cashout-btn').forEach(btn => {
+    btn.addEventListener('click', () => cashOutRocket(parseInt(btn.dataset.idx, 10)));
+  });
+  updateRocketsPanel();
+}
+
+function updateRocketsPanel() {
+  if (State.rocketCount <= 1) return;
+  State.rockets.forEach((r, idx) => {
+    const statusEl = document.getElementById(`rocketStatus${idx}`);
+    const btnEl = document.getElementById(`rocketCashout${idx}`);
+    if (!statusEl || !btnEl) return;
+    if (r.phase === 'flying') {
+      statusEl.textContent = State.currentMultiplier.toFixed(2) + '×';
+      statusEl.style.color = 'var(--text-primary)';
+      btnEl.disabled = false;
+      btnEl.textContent = `CASH $${(r.betAmount * State.currentMultiplier).toFixed(2)}`;
+    } else if (r.phase === 'cashed_out') {
+      statusEl.textContent = 'WON ' + r.cashedOutAt.toFixed(2) + '×';
+      statusEl.style.color = 'var(--accent-green)';
+      btnEl.disabled = true;
+      btnEl.textContent = 'CASHED';
+    } else if (r.phase === 'crashed') {
+      statusEl.textContent = 'CRASH ' + r.round.crashPoint.toFixed(2) + '×';
+      statusEl.style.color = 'var(--accent-red)';
+      btnEl.disabled = true;
+      btnEl.textContent = 'CRASHED';
+    }
+  });
 }
 
 function toggleAutoBet() {
@@ -2291,6 +2514,7 @@ DOM.betInput.addEventListener('change', () => {
   DOM.betInput.value = State.betAmount;
   updateActionButton();
   updateStats();
+  updateSplitHint();
 });
 
 // Auto cashout listener
@@ -2314,14 +2538,16 @@ document.querySelectorAll('.mode-tab').forEach(tab => {
     State.mode = tab.dataset.mode;
     updateActionButton();
     updateStats();
+    updateSplitHint();
   });
 });
 
 // ──────────── GAME LOGIC ────────────
 function handleAction() {
   sound.init();
+  if (State.rocketCount > 1) { handleMultiAction(); return; }
   if (State.phase === 'countdown' || State.phase === 'launching') return;
-  
+
   if (State.phase === 'flying') {
     cashOut();
   } else if (State.phase === 'idle' || State.phase === 'crashed' || State.phase === 'cashed_out') {
@@ -2635,12 +2861,261 @@ function crash() {
   }
 }
 
+// ──────────── TRIPLE LAUNCH — MULTI-ROCKET GAME LOGIC ────────────
+// Skeleton: each rocket is an independent round on the SAME unmodified
+// MathEngine (generateRound / generateCrashPoint / tickToMultiplier).
+// The growth curve is deterministic (shared clock); only each rocket's own
+// crashTick differs, so one shared tick loop resolves all lanes.
+function handleMultiAction() {
+  if (State.phase === 'countdown' || State.phase === 'launching' || State.phase === 'flying') return;
+  if (State.phase === 'idle' || State.phase === 'crashed' || State.phase === 'cashed_out' || State.phase === 'resolved') {
+    startMultiRound();
+  }
+}
+
+function startMultiRound() {
+  const modeCfg = CONFIG.MODES[State.mode];
+  const totalCost = State.betAmount * modeCfg.multiplier;
+
+  if (totalCost > State.balance) return;
+
+  State.balance -= totalCost;
+  updateBalance();
+  sound.play('bet');
+
+  const n = State.rocketCount;
+  const perRocketBet = totalCost / n;
+
+  State.rockets = [];
+  for (let i = 0; i < n; i++) {
+    State.rockets.push({
+      betAmount: perRocketBet,
+      round: MathEngine.generateRound(), // independent crash point, same math as single-rocket mode
+      phase: 'flying',
+      cashedOutAt: null,
+    });
+  }
+
+  State.currentTick = 0;
+  State.currentMultiplier = 1.00;
+  State.phase = 'countdown';
+
+  renderer.graphPoints = [];
+  renderer.eventMarkers = [];
+  renderer.obstacles = [];
+  renderer.collectibles = [];
+  renderer.isGolden = false;
+  renderer._prevAngle = undefined;
+  renderer._cachedMaxMult = 0;
+
+  updateMultiSeedDisplay();
+  renderRocketsPanel();
+
+  DOM.roundResult.className = 'round-result';
+  DOM.nextRoundTimer.className = 'next-round-timer';
+  updateActionButton();
+  DOM.statEvents.textContent = '—';
+
+  let countdown = State.turbo ? 1 : CONFIG.COUNTDOWN_SEC;
+  DOM.multiplier.textContent = countdown + '...';
+  DOM.multiplierLabel.textContent = 'LAUNCHING IN';
+  DOM.multiplierOverlay.classList.add('centered');
+
+  State.countdownTimer = setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      clearInterval(State.countdownTimer);
+      launchMultiFlight();
+    } else {
+      DOM.multiplier.textContent = countdown + '...';
+    }
+  }, 1000);
+}
+
+function launchMultiFlight() {
+  State.phase = 'launching';
+  DOM.multiplier.textContent = '1.00×';
+  DOM.multiplierLabel.textContent = 'LAUNCHING';
+  DOM.multiplierOverlay.classList.add('centered');
+  updateActionButton();
+  sound.play('launch');
+
+  const launchDur = State.turbo ? 600 : 1500;
+  setTimeout(() => {
+    if (State.phase !== 'launching') return;
+    State.phase = 'flying';
+    DOM.multiplierLabel.textContent = '';
+    DOM.multiplierOverlay.classList.remove('centered');
+    updateActionButton();
+    State.tickInterval = setInterval(multiGameTick, CONFIG.TICK_MS);
+  }, launchDur);
+}
+
+function multiGameTick() {
+  if (State.phase !== 'flying') return;
+
+  State.currentTick++;
+  State.currentMultiplier = MathEngine.tickToMultiplier(State.currentTick);
+  window._currentMult = State.currentMultiplier;
+
+  renderer.graphPoints.push({ mult: State.currentMultiplier });
+
+  if (State.currentTick % 2 === 0) {
+    renderer.addTrailParticle(renderer.rocketX, renderer.rocketY);
+  }
+
+  let anyFlying = false;
+  State.rockets.forEach((r, idx) => {
+    if (r.phase !== 'flying') return;
+    if (State.currentTick >= r.round.crashTick) {
+      resolveRocketCrash(idx);
+    } else {
+      anyFlying = true;
+    }
+  });
+
+  updateMultiplier();
+  updateRocketsPanel();
+
+  if (!anyFlying) {
+    finishMultiRound();
+    return;
+  }
+
+  if (Math.floor(State.currentMultiplier * 10) !== Math.floor(MathEngine.tickToMultiplier(State.currentTick - 1) * 10)) {
+    sound.play('tick');
+  }
+}
+
+function resolveRocketCrash(idx) {
+  const r = State.rockets[idx];
+  r.phase = 'crashed';
+  const n = State.rockets.length;
+  const dx = (idx - (n - 1) / 2) * 26;
+  renderer.addExplosion(renderer.rocketX + dx, renderer.rocketY, 'rgba(255,59,92,1)', 18);
+  sound.play('crash');
+}
+
+function cashOutRocket(idx) {
+  const r = State.rockets[idx];
+  if (!r || r.phase !== 'flying') return;
+
+  r.phase = 'cashed_out';
+  r.cashedOutAt = State.currentMultiplier;
+
+  const modeCfg = CONFIG.MODES[State.mode];
+  const winAmount = Math.min(r.betAmount * State.currentMultiplier, modeCfg.winCap);
+  State.balance += winAmount;
+
+  updateBalance();
+  updateRocketsPanel();
+  sound.play('cashout');
+
+  const n = State.rockets.length;
+  const dx = (idx - (n - 1) / 2) * 26;
+  renderer.addExplosion(renderer.rocketX + dx, renderer.rocketY, 'rgba(0,231,1,1)', 20);
+
+  const stillFlying = State.rockets.some(rk => rk.phase === 'flying');
+  if (!stillFlying) finishMultiRound();
+}
+
+function finishMultiRound() {
+  clearInterval(State.tickInterval);
+  State.phase = 'resolved';
+  window._currentMult = 1;
+
+  const modeCfg = CONFIG.MODES[State.mode];
+  let netProfit = 0;
+  let totalWin = 0;
+  State.rockets.forEach(r => {
+    if (r.phase === 'cashed_out') {
+      const win = Math.min(r.betAmount * r.cashedOutAt, modeCfg.winCap);
+      totalWin += win;
+      netProfit += win - r.betAmount;
+    } else {
+      netProfit -= r.betAmount;
+    }
+  });
+
+  State.sessionPL += netProfit;
+  State.roundsPlayed++;
+
+  updateStats();
+  updateMultiplier();
+  updateActionButton();
+  updateRocketsPanel();
+
+  showRoundResult(netProfit >= 0, Math.abs(netProfit), State.currentMultiplier);
+  addMultiHistory(netProfit);
+
+  if (totalWin > 0) {
+    sound.play('win');
+    showWinPopup(totalWin);
+  }
+
+  if (State.autoBet) {
+    const nextCost = State.betAmount * modeCfg.multiplier;
+    if (nextCost > State.balance) {
+      State.autoBet = false;
+      document.getElementById('autoBetBtn').classList.remove('active');
+    } else {
+      showNextRoundTimer(3);
+      setTimeout(() => {
+        if (State.autoBet && State.phase === 'resolved') startMultiRound();
+      }, 2500);
+    }
+  }
+}
+
+function addMultiHistory(netProfit) {
+  const won = netProfit >= 0;
+  State.streak = won ? (State.streak > 0 ? State.streak + 1 : 1) : (State.streak < 0 ? State.streak - 1 : -1);
+
+  const parts = State.rockets.map((r, i) => {
+    const label = CONFIG.ROCKET_LABELS[i] || i;
+    return r.phase === 'cashed_out'
+      ? `${label}: won @${r.cashedOutAt.toFixed(2)}×`
+      : `${label}: crash @${r.round.crashPoint.toFixed(2)}×`;
+  }).join(' · ');
+
+  const entry = { netProfit, parts, round: State.roundsPlayed, rocketCount: State.rockets.length };
+  State.history.unshift(entry);
+  if (State.history.length > 50) State.history.pop();
+
+  const badge = document.createElement('div');
+  badge.className = 'history-badge ' + (won ? 'green' : 'red');
+  badge.textContent = (won ? '+$' : '-$') + Math.abs(netProfit).toFixed(2);
+  badge.dataset.tip = `#${entry.round} · ${entry.rocketCount}🚀 · ${parts}`;
+  DOM.historyBar.insertBefore(badge, DOM.historyBar.firstChild);
+
+  updateStreakIndicator();
+  const badges = DOM.historyBar.querySelectorAll('.history-badge');
+  while (badges.length > 15 && DOM.historyBar.lastElementChild?.classList.contains('history-badge')) {
+    DOM.historyBar.removeChild(DOM.historyBar.lastElementChild);
+  }
+}
+
+function updateMultiSeedDisplay() {
+  const first = State.rockets[0];
+  if (!first || !first.round.seed) return;
+  const s = first.round.seed;
+  const extra = State.rockets.length - 1;
+  DOM.seedDisplay.textContent = '🔗 ' + s.slice(0, 8) + '…' + (extra > 0 ? ` (+${extra})` : '');
+  DOM.seedDisplay.title = 'Rocket A seed: ' + s + ' (click to copy)';
+  DOM.seedDisplay.onclick = () => {
+    navigator.clipboard.writeText(s).catch(() => {});
+    DOM.seedDisplay.textContent = '✓ Copied';
+    setTimeout(() => { DOM.seedDisplay.textContent = '🔗 ' + s.slice(0, 8) + '…' + (extra > 0 ? ` (+${extra})` : ''); }, 1000);
+  };
+}
+
 // ──────────── RENDER LOOP ────────────
 function renderLoop() {
   const visualState = State.phase === 'flying' ? 'flying' :
                   State.phase === 'launching' ? 'launching' :
                   State.phase === 'crashed' ? 'crashed' :
-                  State.phase === 'cashed_out' ? 'cashed_out' : 'idle';
+                  State.phase === 'cashed_out' ? 'cashed_out' :
+                  State.phase === 'resolved' ? 'crashed' : 'idle';
   renderer.render(visualState);
   requestAnimationFrame(renderLoop);
 }
@@ -2707,6 +3182,8 @@ document.addEventListener('keydown', (e) => {
 updateBalance();
 updateStats();
 updateActionButton();
+updateSplitHint();
+renderRocketsPanel();
 renderLoop();
 
 // Rules modal
