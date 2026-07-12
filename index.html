@@ -97,6 +97,10 @@ body {
 
 /* ═══════════ CANVAS AREA ═══════════ */
 .canvas-area {
+  /* explicit placement: .sidebar's definite grid-row would otherwise be
+     auto-placed first and steal column 1 */
+  grid-column: 1;
+  grid-row: 2;
   position: relative;
   overflow: hidden;
   background: radial-gradient(ellipse at 50% 120%, #0d1a2d 0%, var(--bg-primary) 70%);
@@ -309,6 +313,7 @@ canvas#gameCanvas {
 
 /* ═══════════ SIDEBAR ═══════════ */
 .sidebar {
+  grid-column: 2;
   grid-row: 2 / 4;
   background: var(--bg-secondary);
   border-left: 1px solid var(--border-color);
@@ -468,6 +473,36 @@ canvas#gameCanvas {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.rocket-mini-input {
+  width: 100%;
+  min-width: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  outline: none;
+}
+
+.rocket-mini-input.has-auto {
+  border-color: var(--accent-gold);
+}
+
+.rocket-panel-head {
+  display: flex;
+  gap: 6px;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding-bottom: 2px;
+}
+
+.rocket-panel-head span:first-child { width: 16px; flex-shrink: 0; }
+.rocket-panel-head span { flex: 1; }
 
 /* ═══════════ PLAY / CASHOUT BUTTON ═══════════ */
 .action-btn {
@@ -902,6 +937,7 @@ canvas#gameCanvas {
     grid-template-rows: auto 45vh auto auto;
   }
   .sidebar {
+    grid-column: 1;
     grid-row: auto;
     border-left: none;
     border-top: 1px solid var(--border-color);
@@ -1049,7 +1085,7 @@ canvas#gameCanvas {
     <span class="tag">RTP 96%</span>
     <span class="tag">Provably Fair</span>
     <span class="seed-display" id="seedDisplay" title="Round seed (click to copy)">—</span>
-    <span style="margin-left: auto">Rocket Ride — HypeGames v1.1</span>
+    <span style="margin-left: auto">Rocket Ride: Triple Launch — HypeGames v1.2</span>
     <button class="info-btn" onclick="toggleRules()" title="Game rules">ℹ️</button>
   </div>
 </div>
@@ -1075,6 +1111,12 @@ canvas#gameCanvas {
     🚀 Golden Rocket — Rocket transforms to gold<br>
     Events are visual excitement — payout is always bet × multiplier.</p>
 
+    <h3>TRIPLE LAUNCH</h3>
+    <p>Select 2 or 3 rockets to launch them simultaneously.<br>
+    Each rocket has its own bet, its own crash point and its own CASH OUT button.<br>
+    Set a per-rocket AUTO target to cash that rocket out automatically.<br>
+    Some rockets may fail on launch while others fly — hedge your bets!</p>
+
     <h3>FEATURES</h3>
     <p>Auto-cashout — Set target multiplier to auto-collect<br>
     Auto-bet — Automatically place bets each round<br>
@@ -1083,6 +1125,7 @@ canvas#gameCanvas {
     <h3>KEYBOARD</h3>
     <p>Space — Bet / Cash out<br>
     1-5 — Quick bet ($1/$5/$10/$50/$100)<br>
+    Z / X / C — Cash out Rocket A / B / C (Triple Launch)<br>
     M — Max bet · Q — Toggle auto · T — Toggle turbo · S — Sound</p>
 
     <h3>MATH</h3>
@@ -1583,47 +1626,131 @@ class GameRenderer {
       lastPt.mult < 10 ? '#f97316' :
       lastPt.mult < 25 ? '#ef4444' : '#a855f7';
 
-    // Clip to graph area
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(padding.left - 2, padding.top, gw + 4, gh + 2);
-    ctx.clip();
-
-    // Glow
-    ctx.shadowColor = curveColor;
-    ctx.shadowBlur = 12;
-
     // Draw from first point (may be off-screen left for smooth entry)
     const drawStart = Math.max(0, visibleStart - 1);
 
-    // Filled area under curve
-    ctx.beginPath();
-    ctx.moveTo(toX(drawStart), toY(1));
-    for (let i = drawStart; i < visibleEnd; i++) {
-      ctx.lineTo(toX(i), toY(this.graphPoints[i].mult));
-    }
-    ctx.lineTo(toX(visibleEnd - 1), toY(1));
-    ctx.closePath();
-    const fillGrad = ctx.createLinearGradient(0, toY(maxMult), 0, toY(1));
-    fillGrad.addColorStop(0, curveColor + '26');
-    fillGrad.addColorStop(1, curveColor + '00');
-    ctx.fillStyle = fillGrad;
-    ctx.fill();
+    if (State.rocketCount > 1 && State.rockets.length) {
+      // Triple Launch: one parallel curve per lane, frozen at that lane's
+      // crash/cashout point; resolved lanes dim, flying lanes glow
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padding.left - 2, padding.top - 12, gw + 4, gh + 16);
+      ctx.clip();
 
-    // Line
-    ctx.beginPath();
-    ctx.moveTo(toX(drawStart), toY(this.graphPoints[drawStart].mult));
-    for (let i = drawStart + 1; i < visibleEnd; i++) {
-      ctx.lineTo(toX(i), toY(this.graphPoints[i].mult));
-    }
-    ctx.strokeStyle = curveColor;
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
+      const n = State.rockets.length;
+      State.rockets.forEach((r, idx) => {
+        const color = CONFIG.ROCKET_COLORS[idx] || '#3b82f6';
+        const dy = (idx - (n - 1) / 2) * 6;
+        const flying = r.phase === 'flying';
+        const endIdx = r.endIdx != null ? r.endIdx : this.graphPoints.length - 1;
+        const to = Math.min(endIdx, visibleEnd - 1);
+        if (to < drawStart) return;
 
-    ctx.restore(); // restore clip
+        ctx.globalAlpha = flying ? 1 : 0.4;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = flying ? 10 : 0;
+        ctx.beginPath();
+        ctx.moveTo(toX(drawStart), toY(this.graphPoints[drawStart].mult) + dy);
+        for (let i = drawStart + 1; i <= to; i++) {
+          ctx.lineTo(toX(i), toY(this.graphPoints[i].mult) + dy);
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Outcome marker at the frozen end of a resolved lane
+        if (!flying && endIdx <= visibleEnd - 1 && endIdx >= visibleStart) {
+          const mx = toX(endIdx);
+          const my = toY(this.graphPoints[endIdx].mult) + dy;
+          ctx.globalAlpha = 0.9;
+          ctx.font = 'bold 11px JetBrains Mono';
+          ctx.textAlign = 'left';
+          if (r.phase === 'cashed_out') {
+            ctx.fillStyle = '#00e701';
+            ctx.fillText(`✓ ${CONFIG.ROCKET_LABELS[idx]} ${r.cashedOutAt.toFixed(2)}×`, mx + 6, my - 4);
+            ctx.beginPath();
+            ctx.arc(mx, my, 4, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillStyle = '#ff3b5c';
+            ctx.fillText(`✕ ${CONFIG.ROCKET_LABELS[idx]} ${r.round.crashPoint.toFixed(2)}×`, mx + 6, my - 4);
+            ctx.beginPath();
+            ctx.moveTo(mx - 4, my - 4); ctx.lineTo(mx + 4, my + 4);
+            ctx.moveTo(mx + 4, my - 4); ctx.lineTo(mx - 4, my + 4);
+            ctx.strokeStyle = '#ff3b5c';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 1;
+      });
+
+      ctx.restore(); // restore clip
+    } else {
+      // Clip to graph area
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padding.left - 2, padding.top, gw + 4, gh + 2);
+      ctx.clip();
+
+      // Glow
+      ctx.shadowColor = curveColor;
+      ctx.shadowBlur = 12;
+
+      // Filled area under curve
+      ctx.beginPath();
+      ctx.moveTo(toX(drawStart), toY(1));
+      for (let i = drawStart; i < visibleEnd; i++) {
+        ctx.lineTo(toX(i), toY(this.graphPoints[i].mult));
+      }
+      ctx.lineTo(toX(visibleEnd - 1), toY(1));
+      ctx.closePath();
+      const fillGrad = ctx.createLinearGradient(0, toY(maxMult), 0, toY(1));
+      fillGrad.addColorStop(0, curveColor + '26');
+      fillGrad.addColorStop(1, curveColor + '00');
+      ctx.fillStyle = fillGrad;
+      ctx.fill();
+
+      // Line
+      ctx.beginPath();
+      ctx.moveTo(toX(drawStart), toY(this.graphPoints[drawStart].mult));
+      for (let i = drawStart + 1; i < visibleEnd; i++) {
+        ctx.lineTo(toX(i), toY(this.graphPoints[i].mult));
+      }
+      ctx.strokeStyle = curveColor;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.restore(); // restore clip
+    }
+
+    // Triple Launch: per-rocket auto-cashout target lines in lane colors
+    if (State.rocketCount > 1 && State.rockets.length && state === 'flying') {
+      State.rockets.forEach((r, idx) => {
+        if (!r.autoCashout || r.phase !== 'flying' || r.autoCashout > maxMult) return;
+        const acy = toY(r.autoCashout);
+        if (acy <= padding.top || acy >= this.h - padding.bottom) return;
+        const color = CONFIG.ROCKET_COLORS[idx] || '#3b82f6';
+        ctx.save();
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = color + '88';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, acy);
+        ctx.lineTo(this.w - padding.right, acy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = 'bold 10px JetBrains Mono';
+        ctx.fillStyle = color;
+        ctx.textAlign = 'right';
+        ctx.fillText(`${CONFIG.ROCKET_LABELS[idx]} @ ${r.autoCashout.toFixed(2)}×`, this.w - padding.right - 4, acy - 5);
+        ctx.restore();
+      });
+    }
 
     // #3: Auto-cashout target line
-    if (State.autoCashout && State.autoCashout <= maxMult && state === 'flying') {
+    if (State.rocketCount <= 1 && State.autoCashout && State.autoCashout <= maxMult && state === 'flying') {
       const acy = toY(State.autoCashout);
       if (acy > padding.top && acy < this.h - padding.bottom) {
         ctx.save();
@@ -1672,7 +1799,10 @@ class GameRenderer {
       ctx.fillStyle = '#94a3b8';
       ctx.textAlign = 'left';
       const modeCfg = CONFIG.MODES[State.mode];
-      ctx.fillText(`$${(State.betAmount * modeCfg.multiplier).toFixed(0)} on ${modeCfg.label}`, padding.left + 4, this.h - padding.bottom + 20);
+      const info = State.rocketCount > 1
+        ? `$${(getTotalBaseBet() * modeCfg.multiplier).toFixed(0)} across ${State.rockets.length} rockets on ${modeCfg.label}`
+        : `$${(State.betAmount * modeCfg.multiplier).toFixed(0)} on ${modeCfg.label}`;
+      ctx.fillText(info, padding.left + 4, this.h - padding.bottom + 20);
     }
 
     // Position rocket at curve endpoint
@@ -1811,7 +1941,7 @@ class GameRenderer {
       if (r.phase !== 'flying') return; // crashed/cashed rockets already exploded — icon removed
       const dx = (idx - (n - 1) / 2) * spacing;
       const x = this.rocketX + dx;
-      const y = this.rocketY;
+      const y = this.rocketY + (idx - (n - 1) / 2) * 6; // match lane curve offset
       const color = CONFIG.ROCKET_COLORS[idx] || '#3b82f6';
 
       ctx.save();
@@ -2079,7 +2209,7 @@ class GameRenderer {
     }
   }
 
-  addTrailParticle(x, y) {
+  addTrailParticle(x, y, color) {
     if (this.particles.length >= 300) return;
     const mult = window._currentMult || 1;
     const speed = 1.5 + Math.min(mult * 0.4, 4);
@@ -2103,7 +2233,7 @@ class GameRenderer {
       r: Math.random() * 3 + 1.5,
       life: 1,
       decay: 0.025 + Math.random() * 0.015,
-      color: this.isGolden ? 'rgba(255,215,0,1)' : 'rgba(255,165,0,1)',
+      color: color || (this.isGolden ? 'rgba(255,215,0,1)' : 'rgba(255,165,0,1)'),
     });
   }
 
@@ -2162,7 +2292,9 @@ const State = {
 
   // Triple Launch — 1-3 rockets, independent rounds on the same crash engine
   rocketCount: 1,
-  rockets: [], // used only when rocketCount > 1: [{betAmount, round, phase, cashedOutAt}]
+  rockets: [], // used only when rocketCount > 1: [{betAmount, round, phase, cashedOutAt, autoCashout, failed, endIdx}]
+  rocketBets: [10, 10, 10],   // per-rocket base bet (before mode multiplier), editable in the panel
+  rocketAutos: [null, null, null], // per-rocket auto-cashout target, null = off
 };
 
 // ──────────── DOM REFS ────────────
@@ -2231,11 +2363,17 @@ function updateMultiplier() {
   }
 }
 
+// Total base bet for the current setup (per-rocket bets in multi mode)
+function getTotalBaseBet() {
+  if (State.rocketCount <= 1) return State.betAmount;
+  return State.rocketBets.slice(0, State.rocketCount).reduce((a, b) => a + b, 0);
+}
+
 function updateActionButton() {
   const btn = DOM.actionBtn;
   const sub = DOM.actionSub;
   const modeCfg = CONFIG.MODES[State.mode];
-  const totalCost = State.betAmount * modeCfg.multiplier;
+  const totalCost = getTotalBaseBet() * modeCfg.multiplier;
 
   if (State.phase === 'idle' || State.phase === 'crashed' || State.phase === 'cashed_out' || State.phase === 'resolved') {
     btn.className = 'action-btn bet';
@@ -2268,7 +2406,7 @@ function updateActionButton() {
 
 function updateStats() {
   const modeCfg = CONFIG.MODES[State.mode];
-  const totalCost = State.betAmount * modeCfg.multiplier;
+  const totalCost = getTotalBaseBet() * modeCfg.multiplier;
   DOM.statCost.textContent = '$' + totalCost.toLocaleString();
   DOM.statWinCap.textContent = '$' + modeCfg.winCap.toLocaleString();
   DOM.statRounds.textContent = State.roundsPlayed;
@@ -2408,17 +2546,19 @@ function setBetMax() {
   const modeCfg = CONFIG.MODES[State.mode];
   State.betAmount = Math.floor(State.balance / modeCfg.multiplier);
   DOM.betInput.value = State.betAmount;
+  redistributeRocketBets();
+  if (State.rocketCount > 1 && State.phase !== 'flying' && State.phase !== 'countdown' && State.phase !== 'launching') renderRocketsPanel();
   updateActionButton();
   updateStats();
-  updateSplitHint();
 }
 
 function setBetPreset(amount) {
   State.betAmount = amount;
   DOM.betInput.value = amount;
+  redistributeRocketBets();
+  if (State.rocketCount > 1 && State.phase !== 'flying' && State.phase !== 'countdown' && State.phase !== 'launching') renderRocketsPanel();
   updateActionButton();
   updateStats();
-  updateSplitHint();
 }
 
 // ──────────── TRIPLE LAUNCH — ROCKET COUNT (1-3) ────────────
@@ -2430,25 +2570,36 @@ function setRocketCount(n) {
     b.classList.toggle('active', parseInt(b.dataset.count, 10) === n);
   });
   if (n <= 1) State.rockets = [];
-  updateSplitHint();
+  redistributeRocketBets();
   updateActionButton();
+  updateStats();
   renderRocketsPanel();
+}
+
+// Even split of the master bet across lanes — per-rocket inputs can then fine-tune
+function redistributeRocketBets() {
+  if (State.rocketCount > 1) {
+    const per = Math.max(0.01, Math.round((State.betAmount / State.rocketCount) * 100) / 100);
+    for (let i = 0; i < State.rocketCount; i++) State.rocketBets[i] = per;
+  }
+  updateSplitHint();
 }
 
 function updateSplitHint() {
   if (!DOM.splitHint) return;
   if (State.rocketCount <= 1) { DOM.splitHint.textContent = ''; return; }
   const modeCfg = CONFIG.MODES[State.mode];
-  const totalCost = State.betAmount * modeCfg.multiplier;
-  const per = totalCost / State.rocketCount;
-  DOM.splitHint.textContent = `Split ${State.rocketCount}× — $${per.toFixed(2)} per rocket`;
+  const parts = State.rocketBets.slice(0, State.rocketCount)
+    .map((b, i) => `${CONFIG.ROCKET_LABELS[i]} $${(b * modeCfg.multiplier).toFixed(2)}`);
+  DOM.splitHint.textContent = `Total $${(getTotalBaseBet() * modeCfg.multiplier).toFixed(2)} — ${parts.join(' · ')}`;
 }
 
 document.querySelectorAll('.rocket-count-btn').forEach(btn => {
   btn.addEventListener('click', () => setRocketCount(parseInt(btn.dataset.count, 10)));
 });
 
-// Per-rocket panel — built when a multi-rocket round starts, hidden otherwise
+// Per-rocket panel — setup mode (bet + auto inputs) between rounds,
+// flight mode (live status + cashout button) once a round starts
 function renderRocketsPanel() {
   if (State.rocketCount <= 1) {
     DOM.rocketsPanel.style.display = 'none';
@@ -2457,6 +2608,51 @@ function renderRocketsPanel() {
   }
   DOM.rocketsPanel.style.display = 'block';
   DOM.rocketsList.innerHTML = '';
+
+  const inFlight = State.phase === 'countdown' || State.phase === 'launching' || State.phase === 'flying';
+
+  if (!inFlight) {
+    const head = document.createElement('div');
+    head.className = 'rocket-panel-head';
+    head.innerHTML = '<span></span><span>Bet $</span><span>Auto ×</span>';
+    DOM.rocketsList.appendChild(head);
+
+    for (let idx = 0; idx < State.rocketCount; idx++) {
+      const row = document.createElement('div');
+      row.className = 'rocket-row';
+      const auto = State.rocketAutos[idx];
+      row.innerHTML = `
+        <span class="rocket-label" style="color:${CONFIG.ROCKET_COLORS[idx]}">${CONFIG.ROCKET_LABELS[idx]}</span>
+        <input type="number" class="rocket-mini-input rocket-bet-input" data-idx="${idx}" min="0.01" step="0.01" value="${State.rocketBets[idx]}">
+        <input type="number" class="rocket-mini-input rocket-auto-input ${auto ? 'has-auto' : ''}" data-idx="${idx}" min="1.01" step="0.01" placeholder="OFF" value="${auto || ''}">
+      `;
+      DOM.rocketsList.appendChild(row);
+    }
+
+    DOM.rocketsList.querySelectorAll('.rocket-bet-input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const idx = parseInt(inp.dataset.idx, 10);
+        const val = Math.max(0.01, Math.round((parseFloat(inp.value) || 0.01) * 100) / 100);
+        State.rocketBets[idx] = val;
+        inp.value = val;
+        updateSplitHint();
+        updateActionButton();
+        updateStats();
+      });
+    });
+    DOM.rocketsList.querySelectorAll('.rocket-auto-input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const idx = parseInt(inp.dataset.idx, 10);
+        let val = parseFloat(inp.value);
+        if (val && val < 1.01) val = 1.01;
+        State.rocketAutos[idx] = (val && val >= 1.01) ? Math.round(val * 100) / 100 : null;
+        inp.value = State.rocketAutos[idx] || '';
+        inp.classList.toggle('has-auto', !!State.rocketAutos[idx]);
+      });
+    });
+    return;
+  }
+
   State.rockets.forEach((r, idx) => {
     const row = document.createElement('div');
     row.className = 'rocket-row';
@@ -2490,10 +2686,10 @@ function updateRocketsPanel() {
       btnEl.disabled = true;
       btnEl.textContent = 'CASHED';
     } else if (r.phase === 'crashed') {
-      statusEl.textContent = 'CRASH ' + r.round.crashPoint.toFixed(2) + '×';
+      statusEl.textContent = (r.failed ? 'FAILED ' : 'CRASH ') + r.round.crashPoint.toFixed(2) + '×';
       statusEl.style.color = 'var(--accent-red)';
       btnEl.disabled = true;
-      btnEl.textContent = 'CRASHED';
+      btnEl.textContent = r.failed ? 'FAILED 💥' : 'CRASHED';
     }
   });
 }
@@ -2512,9 +2708,10 @@ function toggleTurbo() {
 DOM.betInput.addEventListener('change', () => {
   State.betAmount = Math.max(1, parseInt(DOM.betInput.value) || 1);
   DOM.betInput.value = State.betAmount;
+  redistributeRocketBets();
+  if (State.rocketCount > 1 && State.phase !== 'flying' && State.phase !== 'countdown' && State.phase !== 'launching') renderRocketsPanel();
   updateActionButton();
   updateStats();
-  updateSplitHint();
 });
 
 // Auto cashout listener
@@ -2550,7 +2747,8 @@ function handleAction() {
 
   if (State.phase === 'flying') {
     cashOut();
-  } else if (State.phase === 'idle' || State.phase === 'crashed' || State.phase === 'cashed_out') {
+  } else if (State.phase === 'idle' || State.phase === 'crashed' || State.phase === 'cashed_out' || State.phase === 'resolved') {
+    // 'resolved' is left over when the previous round was a multi-rocket one
     startRound();
   }
 }
@@ -2875,24 +3073,26 @@ function handleMultiAction() {
 
 function startMultiRound() {
   const modeCfg = CONFIG.MODES[State.mode];
-  const totalCost = State.betAmount * modeCfg.multiplier;
+  const n = State.rocketCount;
+  const totalCost = getTotalBaseBet() * modeCfg.multiplier;
 
-  if (totalCost > State.balance) return;
+  if (totalCost <= 0 || totalCost > State.balance) return;
 
   State.balance -= totalCost;
   updateBalance();
   sound.play('bet');
 
-  const n = State.rocketCount;
-  const perRocketBet = totalCost / n;
-
   State.rockets = [];
   for (let i = 0; i < n; i++) {
+    const round = MathEngine.generateRound(); // independent crash point, same math as single-rocket mode
     State.rockets.push({
-      betAmount: perRocketBet,
-      round: MathEngine.generateRound(), // independent crash point, same math as single-rocket mode
+      betAmount: State.rocketBets[i] * modeCfg.multiplier,
+      autoCashout: State.rocketAutos[i],
+      round,
+      failed: round.crashTick < 15, // same FAILED LAUNCH rule as single mode
       phase: 'flying',
       cashedOutAt: null,
+      endIdx: null, // graphPoints index where this lane's curve froze (crash/cashout)
     });
   }
 
@@ -2960,17 +3160,27 @@ function multiGameTick() {
 
   renderer.graphPoints.push({ mult: State.currentMultiplier });
 
-  if (State.currentTick % 2 === 0) {
-    renderer.addTrailParticle(renderer.rocketX, renderer.rocketY);
-  }
-
   let anyFlying = false;
   State.rockets.forEach((r, idx) => {
     if (r.phase !== 'flying') return;
+
+    // Per-rocket auto-cashout (mirrors single-mode: fires at current multiplier)
+    if (r.autoCashout && State.currentMultiplier >= r.autoCashout) {
+      cashOutRocket(idx);
+      return;
+    }
+
     if (State.currentTick >= r.round.crashTick) {
       resolveRocketCrash(idx);
-    } else {
-      anyFlying = true;
+      return;
+    }
+
+    anyFlying = true;
+
+    // Colored exhaust trail per lane
+    if (State.currentTick % 2 === 0) {
+      const off = multiRocketOffset(idx, State.rockets.length);
+      renderer.addTrailParticle(renderer.rocketX + off.dx, renderer.rocketY + off.dy, rocketColorRGBA(idx));
     }
   });
 
@@ -2987,21 +3197,36 @@ function multiGameTick() {
   }
 }
 
+// Shared lane offsets: dx spreads the rocket icons, dy separates the parallel curves
+function multiRocketOffset(idx, n) {
+  return { dx: (idx - (n - 1) / 2) * 26, dy: (idx - (n - 1) / 2) * 6 };
+}
+
+// CONFIG.ROCKET_COLORS are hex — explosions/trails need rgba strings
+function rocketColorRGBA(idx, alpha = 1) {
+  const hex = CONFIG.ROCKET_COLORS[idx] || '#3b82f6';
+  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function resolveRocketCrash(idx) {
   const r = State.rockets[idx];
   r.phase = 'crashed';
-  const n = State.rockets.length;
-  const dx = (idx - (n - 1) / 2) * 26;
-  renderer.addExplosion(renderer.rocketX + dx, renderer.rocketY, 'rgba(255,59,92,1)', 18);
+  r.endIdx = renderer.graphPoints.length - 1;
+  const off = multiRocketOffset(idx, State.rockets.length);
+  // Explosion in the lane color plus the classic crash red
+  renderer.addExplosion(renderer.rocketX + off.dx, renderer.rocketY + off.dy, rocketColorRGBA(idx), 14);
+  renderer.addExplosion(renderer.rocketX + off.dx, renderer.rocketY + off.dy, 'rgba(255,59,92,1)', 12);
   sound.play('crash');
 }
 
 function cashOutRocket(idx) {
   const r = State.rockets[idx];
-  if (!r || r.phase !== 'flying') return;
+  if (!r || r.phase !== 'flying' || State.phase !== 'flying') return;
 
   r.phase = 'cashed_out';
   r.cashedOutAt = State.currentMultiplier;
+  r.endIdx = renderer.graphPoints.length - 1;
 
   const modeCfg = CONFIG.MODES[State.mode];
   const winAmount = Math.min(r.betAmount * State.currentMultiplier, modeCfg.winCap);
@@ -3011,15 +3236,15 @@ function cashOutRocket(idx) {
   updateRocketsPanel();
   sound.play('cashout');
 
-  const n = State.rockets.length;
-  const dx = (idx - (n - 1) / 2) * 26;
-  renderer.addExplosion(renderer.rocketX + dx, renderer.rocketY, 'rgba(0,231,1,1)', 20);
+  const off = multiRocketOffset(idx, State.rockets.length);
+  renderer.addExplosion(renderer.rocketX + off.dx, renderer.rocketY + off.dy, 'rgba(0,231,1,1)', 20);
 
   const stillFlying = State.rockets.some(rk => rk.phase === 'flying');
   if (!stillFlying) finishMultiRound();
 }
 
 function finishMultiRound() {
+  if (State.phase === 'resolved') return; // guard against double-resolve in the same tick
   clearInterval(State.tickInterval);
   State.phase = 'resolved';
   window._currentMult = 1;
@@ -3045,7 +3270,7 @@ function finishMultiRound() {
   updateActionButton();
   updateRocketsPanel();
 
-  showRoundResult(netProfit >= 0, Math.abs(netProfit), State.currentMultiplier);
+  showMultiRoundResult(netProfit);
   addMultiHistory(netProfit);
 
   if (totalWin > 0) {
@@ -3053,8 +3278,13 @@ function finishMultiRound() {
     showWinPopup(totalWin);
   }
 
+  // Bring back the bet/auto inputs for the next round once the result has been seen
+  setTimeout(() => {
+    if (State.phase === 'resolved') renderRocketsPanel();
+  }, 2600);
+
   if (State.autoBet) {
-    const nextCost = State.betAmount * modeCfg.multiplier;
+    const nextCost = getTotalBaseBet() * modeCfg.multiplier;
     if (nextCost > State.balance) {
       State.autoBet = false;
       document.getElementById('autoBetBtn').classList.remove('active');
@@ -3065,6 +3295,20 @@ function finishMultiRound() {
       }, 2500);
     }
   }
+}
+
+// Per-rocket outcome line, e.g. "A ✓2.10× · B ✕1.34× · C ✓5.02× — +$12.40"
+function showMultiRoundResult(netProfit) {
+  const el = DOM.roundResult;
+  const parts = State.rockets.map((r, i) =>
+    r.phase === 'cashed_out'
+      ? `${CONFIG.ROCKET_LABELS[i]} ✓${r.cashedOutAt.toFixed(2)}×`
+      : `${CONFIG.ROCKET_LABELS[i]} ✕${r.round.crashPoint.toFixed(2)}×`
+  ).join(' · ');
+  const won = netProfit >= 0;
+  el.textContent = `${parts} — ${won ? '+' : '-'}$${Math.abs(netProfit).toFixed(2)}`;
+  el.className = 'round-result ' + (won ? 'win' : 'loss') + ' visible';
+  setTimeout(() => { el.classList.remove('visible'); }, 4000);
 }
 
 function addMultiHistory(netProfit) {
@@ -3175,6 +3419,10 @@ document.addEventListener('keydown', (e) => {
     case 'KeyT': toggleTurbo(); break;
     case 'KeyS': toggleSound(); break;
     case 'KeyM': setBetMax(); break;
+    // Triple Launch: per-rocket cashout hotkeys
+    case 'KeyZ': if (State.rocketCount > 1) cashOutRocket(0); break;
+    case 'KeyX': if (State.rocketCount > 1) cashOutRocket(1); break;
+    case 'KeyC': if (State.rocketCount > 1) cashOutRocket(2); break;
   }
 });
 
