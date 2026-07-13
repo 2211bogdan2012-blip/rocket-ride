@@ -2676,10 +2676,18 @@ function updateRocketsPanel() {
     const btnEl = document.getElementById(`rocketCashout${idx}`);
     if (!statusEl || !btnEl) return;
     if (r.phase === 'flying') {
-      statusEl.textContent = State.currentMultiplier.toFixed(2) + '×';
-      statusEl.style.color = 'var(--text-primary)';
-      btnEl.disabled = false;
-      btnEl.textContent = `CASH $${(r.betAmount * State.currentMultiplier).toFixed(2)}`;
+      if (r.failed) {
+        // FAILED LAUNCH — no cashout possible, same reveal as single mode
+        statusEl.textContent = 'FAILING…';
+        statusEl.style.color = 'var(--accent-red)';
+        btnEl.disabled = true;
+        btnEl.textContent = 'NO SIGNAL';
+      } else {
+        statusEl.textContent = State.currentMultiplier.toFixed(2) + '×';
+        statusEl.style.color = 'var(--text-primary)';
+        btnEl.disabled = false;
+        btnEl.textContent = `CASH $${(r.betAmount * State.currentMultiplier).toFixed(2)}`;
+      }
     } else if (r.phase === 'cashed_out') {
       statusEl.textContent = 'WON ' + r.cashedOutAt.toFixed(2) + '×';
       statusEl.style.color = 'var(--accent-green)';
@@ -3164,8 +3172,9 @@ function multiGameTick() {
   State.rockets.forEach((r, idx) => {
     if (r.phase !== 'flying') return;
 
-    // Per-rocket auto-cashout (mirrors single-mode: fires at current multiplier)
-    if (r.autoCashout && State.currentMultiplier >= r.autoCashout) {
+    // Per-rocket auto-cashout (mirrors single-mode: fires at current multiplier;
+    // FAILED LAUNCH lanes are locked out, same as single mode)
+    if (!r.failed && r.autoCashout && State.currentMultiplier >= r.autoCashout) {
       cashOutRocket(idx);
       return;
     }
@@ -3223,6 +3232,7 @@ function resolveRocketCrash(idx) {
 function cashOutRocket(idx) {
   const r = State.rockets[idx];
   if (!r || r.phase !== 'flying' || State.phase !== 'flying') return;
+  if (r.failed) return; // FAILED LAUNCH — no cashout possible (rule #5, same as single mode)
 
   r.phase = 'cashed_out';
   r.cashedOutAt = State.currentMultiplier;
